@@ -1,0 +1,7 @@
+# This file tracks properties of this Flutter project.
+# Used by Flutter tool; do not edit manually unless you know what you are doing.
+version:
+  revision: "manual"
+  channel: "stable"
+
+project_type: app

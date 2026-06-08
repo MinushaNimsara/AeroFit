@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /daily_tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /meals/{mealId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /meal_logs/{logId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /workout_sessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /workout_splits/{splitId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /exercises/{exerciseId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /exercise_images/{imageId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /weight_entries/{entryId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+.dart_tool/
+.idea/
+android/.gradle/
+build/
+!build/web/
+ios/Pods/
+*.iml
+.env
+.env.*

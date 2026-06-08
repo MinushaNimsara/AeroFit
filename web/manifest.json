@@ -1,0 +1,66 @@
+{
+  "id": "/",
+  "name": "AeroFit — Lifestyle & Fitness",
+  "short_name": "AeroFit",
+  "description": "Track routine, gym workouts, meals, and daily wins. Built for Minusha.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#0D0F14",
+  "theme_color": "#6C9EFF",
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "categories": ["health", "fitness", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "icons/Icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/Icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/Icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/Icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log meal",
+      "short_name": "Meal",
+      "description": "Log calories and macros",
+      "url": "/meals",
+      "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Gym workout",
+      "short_name": "Gym",
+      "description": "Track sets and exercise photos",
+      "url": "/workouts",
+      "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Daily routine",
+      "short_name": "Tasks",
+      "description": "Habits and work blocks",
+      "url": "/routine",
+      "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
