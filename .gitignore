@@ -29,6 +29,8 @@ migrate_working_dir/
 /build/*
 !/build/web/
 !/build/web/**
+# Pre-built Vercel output (copied from build/web before deploy)
+/web/
 coverage/
 
 # Symbolication related

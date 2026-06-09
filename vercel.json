@@ -1,9 +1,9 @@
 {
   "cleanUrls": true,
   "framework": null,
-  "buildCommand": "echo 'Skipping build step'",
   "installCommand": "echo 'Skipping install step'",
-  "outputDirectory": "build/web",
+  "buildCommand": "rm -rf web && cp -r build/web web && echo 'Copied build/web to web'",
+  "outputDirectory": "web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [
     {
