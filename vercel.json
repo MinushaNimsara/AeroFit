@@ -1,8 +1,8 @@
 {
   "version": 2,
   "framework": null,
-  "installCommand": "echo 'Skipping install'",
-  "buildCommand": "bash scripts/vercel-build.sh",
+  "installCommand": "sh scripts/vercel-install.sh",
+  "buildCommand": "sh scripts/vercel-build.sh",
   "outputDirectory": "web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

@@ -4,74 +4,66 @@
 
 - Git repo connected to Vercel
 - Firebase Web app configured (`docs/FIREBASE_WEB_INIT.md`)
-- FlutterFire **or** Vercel env vars for Firebase (see below)
 
-## 1. Project settings in Vercel
+## 1. Vercel dashboard — turn OFF overrides
 
-| Setting | Value |
-|---------|--------|
+Go to **Vercel → Project → Settings → Build & Development Settings**.
+
+For each row below, click **Override** so it is **disabled** (grey). Let `vercel.json` control the project:
+
+| Setting | Must be |
+|---------|---------|
 | Framework Preset | **Other** |
-| Root Directory | `.` (repo root) |
-| Install Command | *(from `vercel.json`)* `bash scripts/vercel-install.sh` |
-| Build Command | *(from `vercel.json`)* `bash scripts/vercel-build.sh` |
-| Output Directory | `build/web` |
+| Root Directory | **empty** or `.` |
+| Install Command | *not overridden* |
+| Build Command | *not overridden* |
+| Output Directory | *not overridden* |
 
-`vercel.json` at the repo root sets these automatically when you import the project.
+If Override stays ON with old values (`build/web`, `bash scripts/...` from an earlier setup), deployments fail even when `vercel.json` is correct.
 
-## 2. Environment variables (Production)
+## 2. How deployment works (pre-built)
 
-Add in Vercel → Settings → Environment Variables:
+The repo commits the production Flutter bundle in **`web/`** (includes `main.dart.js`).
 
-**Firebase (if not committing `firebase_options.dart`):**
+`vercel.json` runs lightweight scripts that:
 
-- `FIREBASE_API_KEY`
-- `FIREBASE_APP_ID`
-- `FIREBASE_MESSAGING_SENDER_ID`
-- `FIREBASE_PROJECT_ID`
-- `FIREBASE_AUTH_DOMAIN`
-- `FIREBASE_STORAGE_BUCKET`
+1. Skip Flutter SDK install
+2. Verify `web/main.dart.js` exists (or copy from `dist/` as fallback)
+3. Serve **`web/`** as the static output
 
-**App:**
+No Flutter build runs on Vercel servers.
 
-- `DISPLAY_NAME` = `Minusha`
-- `DAILY_CALORIE_GOAL` = `2000`
-- `FOOD_VISION_API_URL` = `https://your-python-api.com/analyze-food`
-
-## 3. Why `vercel.json` rewrites matter
-
-Flutter Web + **go_router** uses client-side routes (`/meals`, `/workouts`, etc.). A direct visit or refresh on `/meals` would 404 without a rewrite to `index.html`.
-
-The rewrite rule sends unknown paths to `index.html` while **excluding** static assets (`assets/`, `canvaskit/`, `main.dart.js`, service worker, icons, manifest).
-
-## 4. Deploy
-
-```bash
-# CLI (optional)
-npm i -g vercel
-vercel --prod
-```
-
-Or push to `main` with Git integration.
-
-First build takes ~8–15 minutes (Flutter SDK clone). Later builds use Vercel cache if `FLUTTER_HOME` persists.
-
-## 5. Post-deploy checklist
-
-- [ ] Open `https://your-app.vercel.app` — Dashboard loads
-- [ ] Navigate to `/meals` → refresh page → **no 404**
-- [ ] Chrome → Install App banner or address bar install icon
-- [ ] Firebase Auth → add Vercel domain to authorized domains
-- [ ] Firestore rules deployed
-
-## 6. Local production build (test before deploy)
+## 3. Rebuild after code changes
 
 ```powershell
 flutter build web --release --base-href /
-npx serve build/web
+Copy-Item -Path build\web\* -Destination web\ -Recurse -Force
+git add web/
+git commit -m "Update production web build"
+git push origin main
 ```
 
-Test deep links: `http://localhost:3000/workouts`.
+Optional: keep `dist/` in sync with `bash scripts/prepare-vercel-dist.sh`.
+
+## 4. Environment variables (optional)
+
+Only needed if you stop committing `lib/firebase_options.dart`:
+
+- `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_MESSAGING_SENDER_ID`
+- `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_STORAGE_BUCKET`
+- `DISPLAY_NAME`, `DAILY_CALORIE_GOAL`
+
+## 5. SPA routing
+
+`vercel.json` rewrites all routes to `/index.html` so `/workouts`, `/meals`, etc. work on refresh.
+
+## 6. Post-deploy checklist
+
+- [ ] Open production URL — login screen loads
+- [ ] Refresh on `/workouts` — no 404
+- [ ] Firebase Console → Auth → add Vercel domain to authorized domains
+- [ ] Deploy Firestore rules: `firebase deploy --only firestore:rules`
 
 ## 7. Custom domain
 
-Vercel → Domains → add domain → update Firebase Authorized domains and Auth redirect URLs.
+Vercel → Domains → add domain → update Firebase Authorized domains.
