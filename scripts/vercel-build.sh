@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Copy pre-built Flutter web bundle into web/ for Vercel output.
 set -euo pipefail
 
-if [ ! -f dist/main.dart.js ]; then
-  echo "ERROR: dist/main.dart.js not found in repository."
-  echo "Run locally: flutter build web --release --base-href /"
-  echo "Then: bash scripts/prepare-vercel-dist.sh && git add dist && git push"
-  exit 1
+if [ -f web/main.dart.js ] && [ -f web/index.html ]; then
+  echo "→ Using committed web/ build output"
+  exit 0
 fi
 
-rm -rf web
-mkdir -p web
-cp -r dist/. web/
+if [ -f dist/main.dart.js ]; then
+  echo "→ Copying dist/ into web/"
+  rm -rf web
+  mkdir -p web
+  cp -r dist/. web/
+  exit 0
+fi
 
-echo "→ Prepared Vercel output in web/ ($(du -sh web | cut -f1))"
-ls -la web | head -15
+echo "ERROR: No Flutter web build found. Commit web/ or dist/ before deploying."
+exit 1

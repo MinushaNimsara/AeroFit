@@ -2,7 +2,7 @@
   "version": 2,
   "framework": null,
   "installCommand": "echo 'Skipping install'",
-  "buildCommand": "echo 'Skipping build — serving committed web/ output'",
+  "buildCommand": "bash scripts/vercel-build.sh",
   "outputDirectory": "web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
