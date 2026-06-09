@@ -2,5 +2,7 @@
   "name": "aerofit",
   "version": "1.0.0",
   "private": true,
-  "description": "AeroFit Flutter web PWA — static files served from dist/ via vercel.json"
+  "scripts": {
+    "build": "test -f dist/main.dart.js && test -f dist/index.html && echo 'Pre-built dist/ is ready'"
+  }
 }
