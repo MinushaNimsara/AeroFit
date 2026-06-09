@@ -2,8 +2,8 @@
   "cleanUrls": true,
   "framework": null,
   "installCommand": "echo 'Skipping install step'",
-  "buildCommand": "echo 'Skipping build step'",
-  "outputDirectory": "dist",
+  "buildCommand": "rm -rf web && cp -r dist/. web/ && test -f web/main.dart.js && echo 'Deployed static files copied to web/'",
+  "outputDirectory": "web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [
     {

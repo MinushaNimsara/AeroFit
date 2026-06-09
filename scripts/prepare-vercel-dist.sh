@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Rebuild dist/ after code changes: flutter build web, then run this script.
 set -euo pipefail
 
 if [ ! -f build/web/main.dart.js ]; then
@@ -11,3 +12,4 @@ rm -rf dist
 mkdir -p dist
 cp -r build/web/. dist/
 echo "Prepared dist/ from build/web ($(du -sh dist | cut -f1))"
+echo "Commit dist/ and push to redeploy on Vercel."
