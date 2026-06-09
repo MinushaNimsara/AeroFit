@@ -2,12 +2,11 @@
 # Production web build for Vercel (PWA + go_router client routes).
 set -euo pipefail
 
-export PATH="${FLUTTER_HOME:-/vercel/flutter}/bin:$PATH"
+export PATH="${FLUTTER_HOME:-$HOME/flutter}/bin:$PATH"
 
 echo "→ Resolving Dart dependencies"
 flutter pub get
 
-# Optional: inject Firebase web config from Vercel env (see docs/VERCEL_DEPLOY.md)
 if [ -n "${FIREBASE_API_KEY:-}" ]; then
   echo "→ Generating firebase_options.dart from Vercel environment variables"
   dart run tool/generate_firebase_options.dart
@@ -26,6 +25,7 @@ echo "→ Building Flutter web (release)"
 flutter build web \
   --release \
   --base-href / \
+  --no-wasm-dry-run \
   "${DART_DEFINES[@]}"
 
 echo "→ Build output: build/web ($(du -sh build/web | cut -f1))"
