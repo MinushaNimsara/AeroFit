@@ -1,8 +1,0 @@
-{
-  "name": "aerofit",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "test -f dist/main.dart.js && test -f dist/index.html && echo 'Pre-built dist/ is ready'"
-  }
-}
