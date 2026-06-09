@@ -1,8 +1,8 @@
 {
   "version": 2,
   "framework": null,
-  "installCommand": "bash scripts/vercel-install.sh",
-  "buildCommand": "bash scripts/vercel-build.sh",
+  "installCommand": "echo 'Skipping install — using pre-built dist/'",
+  "buildCommand": "test -f dist/main.dart.js && rm -rf web && mkdir -p web && cp -r dist/. web/ && echo 'Copied dist/ to web/'",
   "outputDirectory": "web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [
