@@ -1,22 +1,8 @@
 {
   "version": 2,
   "framework": null,
-  "installCommand": "echo 'Skipping install — using pre-built dist/'",
-  "buildCommand": "test -f dist/main.dart.js && rm -rf web && mkdir -p web && cp -r dist/. web/ && echo 'Copied dist/ to web/'",
+  "installCommand": "echo 'Skipping install'",
+  "buildCommand": "echo 'Skipping build — serving committed web/ output'",
   "outputDirectory": "web",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
-  "headers": [
-    {
-      "source": "/flutter_service_worker.js",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
