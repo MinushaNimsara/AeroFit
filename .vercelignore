@@ -12,7 +12,7 @@ scripts/
 tool/
 docs/
 firebase/
-assets/
+/assets/
 *.iml
 .env
 .env.*
