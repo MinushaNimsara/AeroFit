@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- PWA -->
+  <meta name="description" content="AeroFit — track routine, gym, meals, and daily wins.">
+  <meta name="theme-color" content="#6C9EFF">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AeroFit">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <title>AeroFit</title>
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <style>
+    body {
+      margin: 0;
+      background: #0D0F14;
+    }
+    #install-banner {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      background: #161A22;
+      color: #E8ECF4;
+      border: 1px solid #6C9EFF;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      gap: 12px;
+      align-items: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    }
+    #install-banner button {
+      background: #6C9EFF;
+      color: #0D0F14;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #install-banner button.dismiss {
+      background: transparent;
+      color: #8B95A8;
+    }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #8B95A8;
+      font-family: system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="install-banner" role="dialog" aria-label="Install AeroFit">
+    <span>Install AeroFit for quick access from your home screen or desktop.</span>
+    <button type="button" id="install-btn">Install App</button>
+    <button type="button" class="dismiss" id="install-dismiss" aria-label="Dismiss">✕</button>
+  </div>
+
+  <script>
+    let deferredPrompt = null;
+    const banner = document.getElementById('install-banner');
+    const installBtn = document.getElementById('install-btn');
+    const dismissBtn = document.getElementById('install-dismiss');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!sessionStorage.getItem('aerofit-install-dismissed')) {
+        banner.style.display = 'flex';
+      }
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      banner.style.display = 'none';
+    });
+
+    dismissBtn.addEventListener('click', () => {
+      sessionStorage.setItem('aerofit-install-dismissed', '1');
+      banner.style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      banner.style.display = 'none';
+      deferredPrompt = null;
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('flutter_service_worker.js?v=2773069936');
+      });
+    }
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
