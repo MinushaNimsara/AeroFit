@@ -1,21 +1,148 @@
 rules_version = '2';
+
 service cloud.firestore {
+
   match /databases/{database}/documents {
+
     function isOwner(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    function coachDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return coachDoc();
+    }
+
+    function isCoachAccount() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && coachDoc().data.role == 'coach';
+    }
+
+    function coachGymName() {
+      return coachDoc().data.gymName;
+    }
+
+    function isMasterAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && coachDoc().data.role == 'master_admin';
+    }
+
+    function isTrainee() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && coachDoc().data.role == 'trainee';
+    }
+
+    function isTraineeDocument() {
+      return resource == null
+        || resource.data.get('role', 'trainee') == 'trainee'
+        || !('role' in resource.data);
+    }
+
+    function coachCanReadTraineeProfile() {
+      return isCoachAccount()
+        && resource.data.get('coachId', '') == request.auth.uid;
+    }
+
+    function coachCanReadTraineeByUid() {
+      return isCoachAccount() && isTraineeDocument();
+    }
+
+    function traineeInCoachGym(traineeId) {
+      return isCoachAccount()
+        && get(/databases/$(database)/documents/users/$(traineeId)).data.get('coachId', '')
+          == request.auth.uid;
+    }
+
+    function coachInSameGymAsTrainee(coachId) {
+      return isTrainee()
+        && resource.data.get('role', '') == 'coach'
+        && resource.data.get('gymName', '') == coachDoc().data.get('gymName', '');
+    }
+
+    // Patched for safety against legacy profiles and strict map properties during QR scanner saves
+    function coachEnrollmentUpdate() {
+      return isCoachAccount()
+        && (resource.data.get('role', 'trainee') == 'trainee' || !('role' in resource.data))
+        && request.resource.data.get('coachId', '') == request.auth.uid;
+    }
+
+    function coachCalorieGoalUpdate() {
+      return isCoachAccount()
+        && resource.data.get('coachId', '') == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['dailyCalorieGoal', 'targetCalories']);
+    }
+
+    function coachRoutineAssignmentUpdate() {
+      return isCoachAccount()
+        && resource.data.get('coachId', '') == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'activeScheduleName',
+              'assignedRoutineAt',
+              'assignedRoutineId',
+              'assignedByCoachId',
+              'newScheduleAssigned',
+            ]);
+    }
+
+    function masterAdminCoachProfileUpdate(userId) {
+      return isMasterAdmin()
+        && resource.data.role == 'coach'
+        && request.resource.data.role == 'coach'
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['displayName', 'gymName']);
+    }
+
+    function isCoachProvisioning() {
+      return isMasterAdmin()
+        && request.resource.data.role == 'coach'
+        && request.resource.data.keys().hasAll(['uid', 'displayName', 'gymName', 'createdAt']);
+    }
+
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+
+      allow get: if isOwner(userId)
+        || isMasterAdmin()
+        || coachCanReadTraineeProfile()
+        || coachCanReadTraineeByUid()
+        || coachInSameGymAsTrainee(userId);
+      allow list: if isMasterAdmin()
+        || coachCanReadTraineeProfile()
+        || coachInSameGymAsTrainee(userId);
+      allow update: if isOwner(userId)
+        || coachEnrollmentUpdate()
+        || coachCalorieGoalUpdate()
+        || coachRoutineAssignmentUpdate()
+        || masterAdminCoachProfileUpdate(userId);
+      allow delete: if isOwner(userId);
+      allow create: if isOwner(userId) || isCoachProvisioning();
+
+      match /live_status/{statusId} {
+        allow read, write: if isOwner(userId);
+        allow read: if isMasterAdmin() || traineeInCoachGym(userId);
+        allow update: if traineeInCoachGym(userId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['nudgeTriggered']);
+      }
 
       match /tasks/{taskId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId) || traineeInCoachGym(userId);
+        allow write: if isOwner(userId);
       }
       match /daily_tasks/{taskId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId) || traineeInCoachGym(userId);
+        allow write: if isOwner(userId);
       }
       match /meals/{mealId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId) || isMasterAdmin() || traineeInCoachGym(userId);
+        allow write: if isOwner(userId);
       }
       match /meal_logs/{logId} {
         allow read, write: if isOwner(userId);
@@ -23,17 +150,32 @@ service cloud.firestore {
       match /workout_sessions/{sessionId} {
         allow read, write: if isOwner(userId);
       }
-      match /workout_splits/{splitId} {
+      match /workout_history/{sessionId} {
         allow read, write: if isOwner(userId);
+        allow read: if isMasterAdmin() || traineeInCoachGym(userId);
+      }
+      match /workout_splits/{splitId} {
+        allow read: if isOwner(userId) || isMasterAdmin() || traineeInCoachGym(userId);
+        allow write: if isOwner(userId) || traineeInCoachGym(userId);
+      }
+      match /workout_templates/{templateId} {
+        allow read: if isOwner(userId) || isMasterAdmin() || traineeInCoachGym(userId);
+        allow write: if isOwner(userId) || isMasterAdmin() || traineeInCoachGym(userId);
       }
       match /exercises/{exerciseId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId) || isMasterAdmin() || traineeInCoachGym(userId);
+        allow write: if isOwner(userId) || traineeInCoachGym(userId);
       }
       match /exercise_images/{imageId} {
         allow read, write: if isOwner(userId);
       }
       match /weight_entries/{entryId} {
         allow read, write: if isOwner(userId);
+      }
+
+      match /enrolled_trainees/{traineeId} {
+        allow read, write: if isOwner(userId);
+        allow read: if isMasterAdmin();
       }
     }
   }

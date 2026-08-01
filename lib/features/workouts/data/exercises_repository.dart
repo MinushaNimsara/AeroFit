@@ -54,6 +54,7 @@ class ExercisesRepository {
     required String weightOrSetting,
     required String notes,
     String? imageUrl,
+    String? exerciseId,
   }) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty || splitId.isEmpty) return;
@@ -66,6 +67,7 @@ class ExercisesRepository {
       'weightOrSetting': weightOrSetting.trim(),
       'notes': notes.trim(),
       'imageUrl': imageUrl,
+      if (exerciseId != null && exerciseId.isNotEmpty) 'exerciseId': exerciseId,
       'timestamp': FieldValue.serverTimestamp(),
     });
 
@@ -80,6 +82,23 @@ class ExercisesRepository {
     required String exerciseId,
   }) {
     return _exercisesRef(uid).doc(exerciseId).delete();
+  }
+
+  /// Deletes every exercise under [splitId] — used when the whole split is
+  /// removed so exercises don't get orphaned in Firestore.
+  Future<void> deleteExercisesForSplit({
+    required String uid,
+    required String splitId,
+  }) async {
+    final snapshot =
+        await _exercisesRef(uid).where('splitId', isEqualTo: splitId).get();
+    if (snapshot.docs.isEmpty) return;
+
+    final batch = _firestore.batch();
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
   }
 
   Future<void> setExerciseCompletedToday({

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:aerofit/core/config/env.dart';
 import 'package:aerofit/core/firebase/firebase_providers.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/dashboard/data/dashboard_repository.dart';
@@ -86,9 +85,10 @@ final dailyStatusProvider = StreamProvider<DailyStatus>((ref) {
 });
 
 final displayNameProvider = Provider<String>((ref) {
-  final auth = ref.watch(authStateProvider).value;
-  if (auth?.displayName != null && auth!.displayName!.isNotEmpty) {
-    return auth.displayName!;
+  final auth = ref.watch(authStateProvider).valueOrNull;
+  final name = auth?.displayName?.trim();
+  if (name != null && name.isNotEmpty) {
+    return name;
   }
-  return Env.displayName;
+  return 'there';
 });

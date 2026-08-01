@@ -33,7 +33,7 @@ class DashboardRepository {
     }
 
     final userSnap = await db.collection('users').doc(userId).get();
-    final calorieGoal = (userSnap.data()?['dailyCalorieGoal'] as int?) ??
+    final calorieGoal = (userSnap.data()?['dailyCalorieGoal'] as num?)?.round() ??
         Env.dailyCalorieGoal;
     final displayGoal = calorieGoal > 0 ? calorieGoal : Env.dailyCalorieGoal;
 

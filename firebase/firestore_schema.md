@@ -2,13 +2,59 @@
 
 All user data lives under `users/{uid}/…` subcollections.
 
+**Exercise library (not Firestore):** the 729-exercise reference catalog
+(name, muscles, equipment, instructions, tips, safety notes, etc.) is bundled
+as static JSON assets at `assets/data/exercises/*.json` and loaded in-memory
+by `ExerciseLibraryRepository` (feature `exercise_library`) — it is never
+read from or written to Firestore. Trainee exercises and coach routine
+templates reference entries from it via an optional `exerciseId` field.
+
 ## `users/{uid}` (document)
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `displayName` | string | e.g. `"Minusha"` |
-| `dailyCalorieGoal` | int | default `2000` |
+| `role` | string | `trainee`, `coach`, or `master_admin` |
+| `gymName` | string? | Coach gym label (master admin) or trainee enrollment gym (QR scan) |
+| `coachId` | string? | Coach UID who enrolled the trainee (set on QR enrollment) |
+| `enrolledAt` | timestamp? | Server timestamp when trainee joined the gym network |
+| `email` | string? | Coach login email (set by master admin provisioning) |
+| `uid` | string? | Coach UID mirror field (set on coach provisioning) |
+| `gender` | string | `male` or `female` |
+| `age` | int | years |
+| `height` | number | cm |
+| `weight` | number | kg |
+| `activityLevel` | string | `sedentary`, `lightly_active`, `moderately_active`, `very_active` |
+| `dailyCalorieGoal` | int | TDEE from Mifflin-St Jeor at sign-up (replaces legacy default `2000`) |
 | `lastWorkoutTimestamp` | timestamp? | Updated when an exercise is logged |
+| `maxRestMinutes` | int? | Coach gym config — default rest timer (default `3`) |
+| `createdAt` | timestamp | |
+
+## `users/{uid}/live_status/current`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `isWorkingOut` | bool | Active session flag |
+| `activeScheduleName` | string | e.g. `"Day 1 Chest & Triceps"` |
+| `currentWorkout` | string | e.g. `"Bench Press"` |
+| `status` | string | `idle`, `working`, `resting`, `slacking` |
+| `startedAt` | timestamp | Session start |
+| `restStartedAt` | timestamp? | When current rest began |
+| `gymName` | string? | Trainee gym for coach alerts |
+| `traineeName` | string? | Display name for coach alerts |
+| `completedWorkouts` | array | Exercise IDs completed this session |
+
+## `users/{uid}/workout_templates/{templateId}`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | Same as document ID |
+| `name` | string | Schedule name |
+| `days` | array | `{ label, workouts[] }` per training day. Each `workouts[]` entry is `{ name, exerciseId? }` — `exerciseId` links to the bundled 729-exercise library (`assets/data/exercises/*.json`, feature `exercise_library`) when picked from it, or is absent for freeform custom entries. Legacy plain-string entries are still read for backward compatibility. |
+| `gymName` | string? | Gym label when cloned/provisioned |
+| `clonedFromCoachUid` | string? | Source coach when duplicated |
+| `clonedFromScheduleId` | string? | Source schedule document ID |
+| `clonedAt` | timestamp? | Clone timestamp |
 | `createdAt` | timestamp | |
 
 ## `users/{uid}/workout_splits/{splitId}`
@@ -68,6 +114,7 @@ All user data lives under `users/{uid}/…` subcollections.
 | `weightOrSetting` | string | e.g. Speed 5.0 / Incline 12 |
 | `notes` | string | Form cues, rest time |
 | `imageUrl` | string? | Cloudinary secure URL |
+| `exerciseId` | string? | Links to the bundled exercise library catalog (`exercise_library` feature) when the exercise was picked from it rather than typed as a custom entry |
 | `timestamp` | timestamp | When the exercise was added |
 | `completedDate` | string? | `YYYY-MM-DD` when checked off; auto-resets each new day |
 
@@ -92,7 +139,7 @@ All user data lives under `users/{uid}/…` subcollections.
 | `imageUrl` | string? | Optional photo URL |
 | `timestamp` | timestamp | Log time (used for today's filter) |
 
-**Dashboard diet pill:** shows `X / 2000 kcal`; green when 85–100% of goal without exceeding.
+**Dashboard diet pill:** shows `X / dailyCalorieGoal kcal`; green when 85–100% of goal without exceeding.
 
 ## `users/{uid}/meal_logs/{logId}` (legacy)
 

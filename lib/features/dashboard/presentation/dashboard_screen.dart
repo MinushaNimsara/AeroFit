@@ -1,10 +1,13 @@
 import 'package:aerofit/core/theme/app_theme.dart';
+import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/dashboard/domain/daily_status.dart';
 import 'package:aerofit/features/dashboard/presentation/widgets/daily_goal_ring.dart';
 import 'package:aerofit/features/dashboard/presentation/widgets/daily_win_loss_banner.dart';
 import 'package:aerofit/features/dashboard/presentation/widgets/remaining_tasks_card.dart';
 import 'package:aerofit/features/dashboard/presentation/widgets/status_pill_row.dart';
 import 'package:aerofit/features/dashboard/providers/dashboard_providers.dart';
+import 'package:aerofit/features/enrollment/presentation/widgets/gym_membership_banner.dart';
+import 'package:aerofit/features/enrollment/presentation/widgets/gym_pass_card.dart';
 import 'package:aerofit/features/meals/providers/meals_providers.dart';
 import 'package:aerofit/features/routine/providers/tasks_providers.dart';
 import 'package:aerofit/features/workouts/providers/exercises_providers.dart';
@@ -24,6 +27,15 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
+    final authUid = ref.watch(authStateProvider).valueOrNull?.uid;
+    if (authUid == null || authUid.trim().isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
     final statusAsync = ref.watch(dailyStatusProvider);
     final displayName = ref.watch(displayNameProvider);
     final dateLabel = DateFormat('EEEE, MMM d').format(DateTime.now());
@@ -111,8 +123,19 @@ class _DashboardBody extends StatelessWidget {
                 )
                     .animate()
                     .fadeIn(delay: 140.ms, duration: 400.ms),
+                const SizedBox(height: 20),
+                const GymMembershipBanner()
+                    .animate()
+                    .fadeIn(delay: 160.ms, duration: 450.ms),
+                const SizedBox(height: 16),
+                const GymPassCard()
+                    .animate()
+                    .fadeIn(delay: 180.ms, duration: 450.ms),
                 const SizedBox(height: 24),
-                DailyWinLossBanner(isWin: status.isDailyWin)
+                DailyWinLossBanner(
+                  isWin: status.isDailyWin,
+                  calorieGoal: status.calorieGoal,
+                )
                     .animate()
                     .fadeIn(delay: 200.ms, duration: 500.ms)
                     .scale(

@@ -3,6 +3,7 @@ import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Single stable [MaterialApp.router] shell — never swap app widgets on auth changes.
 class AeroFitApp extends ConsumerWidget {
   const AeroFitApp({super.key});
 

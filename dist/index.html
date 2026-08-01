@@ -106,8 +106,8 @@
     });
 
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('flutter_service_worker.js?v=2773069936');
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) reg.unregister();
       });
     }
   </script>

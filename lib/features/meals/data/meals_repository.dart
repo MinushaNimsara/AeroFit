@@ -1,4 +1,5 @@
 import 'package:aerofit/features/meals/domain/meal_entry.dart';
+import 'package:aerofit/features/meals/domain/meal_ingredient.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -36,6 +37,10 @@ class MealsRepository {
     required int calories,
     required String mealType,
     String? imageUrl,
+    double protein = 0,
+    double carbs = 0,
+    double fats = 0,
+    List<MealIngredient> ingredients = const [],
   }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty || calories < 0) return;
@@ -47,6 +52,10 @@ class MealsRepository {
       'calories': calories,
       'mealType': mealType,
       'imageUrl': imageUrl,
+      'protein': protein,
+      'carbs': carbs,
+      'fats': fats,
+      'ingredients': ingredients.map((item) => item.toMap()).toList(),
       'timestamp': FieldValue.serverTimestamp(),
     });
   }

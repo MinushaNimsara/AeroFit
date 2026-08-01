@@ -1,7 +1,9 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
+import 'package:aerofit/features/auth/providers/user_profile_providers.dart';
 import 'package:aerofit/features/meals/domain/meal_entry.dart';
 import 'package:aerofit/features/meals/presentation/widgets/log_meal_sheet.dart';
+import 'package:aerofit/features/meals/presentation/widgets/meal_breakdown_sheet.dart';
 import 'package:aerofit/features/meals/providers/meals_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -40,6 +42,11 @@ class MealsScreen extends ConsumerWidget {
           totalCalories: total,
           calorieGoal: goal,
           onDelete: (meal) => _deleteMeal(ref, meal),
+          onMealTap: (meal) => showMealBreakdownSheet(
+            context,
+            meal: meal,
+            calorieGoal: goal,
+          ),
         ),
       ),
     );
@@ -59,12 +66,14 @@ class _MealsBody extends StatelessWidget {
     required this.totalCalories,
     required this.calorieGoal,
     required this.onDelete,
+    required this.onMealTap,
   });
 
   final List<MealEntry> meals;
   final int totalCalories;
   final int calorieGoal;
   final void Function(MealEntry meal) onDelete;
+  final void Function(MealEntry meal) onMealTap;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +194,7 @@ class _MealsBody extends StatelessWidget {
                   return _MealCard(
                     meal: meal,
                     onDelete: () => onDelete(meal),
+                    onTap: () => onMealTap(meal),
                   )
                       .animate()
                       .fadeIn(
@@ -206,10 +216,12 @@ class _MealCard extends StatelessWidget {
   const _MealCard({
     required this.meal,
     required this.onDelete,
+    required this.onTap,
   });
 
   final MealEntry meal;
   final VoidCallback onDelete;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +245,10 @@ class _MealCard extends StatelessWidget {
         child: Material(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          child: Container(
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: const Color(0xFF252B38)),
@@ -288,6 +303,7 @@ class _MealCard extends StatelessWidget {
                       ),
                 ),
               ],
+            ),
             ),
           ),
         ),

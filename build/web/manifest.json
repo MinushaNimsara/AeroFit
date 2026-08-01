@@ -3,7 +3,7 @@
   "name": "AeroFit — Lifestyle & Fitness",
   "short_name": "AeroFit",
   "description": "Track routine, gym workouts, meals, and daily wins. Built for Minusha.",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui", "browser"],

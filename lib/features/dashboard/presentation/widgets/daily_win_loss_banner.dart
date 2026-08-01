@@ -2,9 +2,14 @@ import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class DailyWinLossBanner extends StatelessWidget {
-  const DailyWinLossBanner({super.key, required this.isWin});
+  const DailyWinLossBanner({
+    super.key,
+    required this.isWin,
+    required this.calorieGoal,
+  });
 
   final bool isWin;
+  final int calorieGoal;
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +18,7 @@ class DailyWinLossBanner extends StatelessWidget {
     final title = isWin ? 'Daily Win' : 'Daily Loss';
     final subtitle = isWin
         ? 'Routine, diet target, and workout all complete.'
-        : 'Keep going — complete routine, 2000 kcal target, and gym.';
+        : 'Keep going — complete routine, $calorieGoal kcal target, and gym.';
 
     return Container(
       width: double.infinity,

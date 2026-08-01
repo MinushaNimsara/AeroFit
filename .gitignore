@@ -51,3 +51,11 @@ app.*.map.json
 # google-services.json
 # GoogleService-Info.plist
 # firebase_options.dart
+.vercel
+
+# Local backups / scratch files — never commit
+.git.rar
+/git/
+master admin user & pass.txt
+.tmp-*.js
+build_log.txt

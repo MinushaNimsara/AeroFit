@@ -1,6 +1,16 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
+import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_category_visual.dart';
+import 'package:aerofit/features/exercise_library/providers/exercise_library_providers.dart';
+import 'package:aerofit/features/auth/providers/user_profile_providers.dart';
+import 'package:aerofit/features/enrollment/presentation/widgets/gym_membership_banner.dart';
+import 'package:aerofit/features/enrollment/providers/gym_enrollment_providers.dart';
+import 'package:aerofit/features/live_workout/presentation/live_workout_session_screen.dart';
+import 'package:aerofit/features/workouts/presentation/widgets/start_workout_sheet.dart';
+import 'package:go_router/go_router.dart';
+import 'package:aerofit/features/live_workout/providers/live_workout_providers.dart';
 import 'package:aerofit/features/workouts/domain/gym_exercise.dart';
+import 'package:aerofit/features/workouts/domain/workout_split.dart';
 import 'package:aerofit/features/workouts/presentation/widgets/add_exercise_sheet.dart';
 import 'package:aerofit/features/workouts/presentation/widgets/workout_splits_header.dart';
 import 'package:aerofit/features/workouts/providers/exercises_providers.dart';
@@ -15,15 +25,35 @@ class WorkoutsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authUid = ref.watch(authStateProvider).valueOrNull?.uid;
+    if (authUid == null || authUid.trim().isEmpty) {
+      return const Scaffold(
+        body: SizedBox.shrink(),
+      );
+    }
+
+    final isCompactViewport = MediaQuery.sizeOf(context).shortestSide < 600;
+    final profile = ref.watch(userProfileStreamProvider).valueOrNull;
+    final isTrainee = profile?.isTrainee ?? false;
+    final enrolled = ref.watch(isTraineeEnrolledProvider);
     final splitsAsync = ref.watch(workoutSplitsStreamProvider);
     final exercisesAsync = ref.watch(splitExercisesStreamProvider);
     final selectedSplitId = ref.watch(effectiveSelectedSplitIdProvider);
     final progress = ref.watch(activeSplitGymProgressProvider);
 
+    // Trainees can always build their own splits/routines from the exercise
+    // library and track workouts — gym enrollment only unlocks live
+    // coach-connected features (coach-assigned schedules, live session
+    // visibility to a coach), shown via the banner below.
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gym Tracker'),
         actions: [
+          IconButton(
+            tooltip: 'Exercise Library',
+            icon: const Icon(Icons.menu_book_rounded),
+            onPressed: () => context.push('/workouts/library'),
+          ),
           if (progress.$2 > 0)
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -76,41 +106,59 @@ class WorkoutsScreen extends ConsumerWidget {
         },
         orElse: () => null,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const WorkoutSplitsHeader(),
-          const SizedBox(height: 8),
-          Expanded(
-            child: exercisesAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: isCompactViewport ? double.infinity : 1100,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (isTrainee && !enrolled)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: GymMembershipBanner(),
+                ),
+              const WorkoutSplitsHeader(),
+              _StartWorkoutBanner(
+                exercisesAsync: exercisesAsync,
+                splitsAsync: splitsAsync,
+                selectedSplitId: selectedSplitId,
               ),
-              error: (e, _) => Center(
-                child: Text(
-                  'Could not load exercises: $e',
-                  style: const TextStyle(color: AppColors.textSecondary),
+              const SizedBox(height: 8),
+              Expanded(
+                child: exercisesAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                  error: (e, _) => Center(
+                    child: Text(
+                      'Could not load exercises: $e',
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                  data: (exercises) {
+                    final splits = splitsAsync.valueOrNull;
+                    if (splits == null || splits.isEmpty || selectedSplitId == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return _GymBody(
+                      exercises: exercises,
+                      splitName: splits
+                          .where((s) => s.id == selectedSplitId)
+                          .map((s) => s.name)
+                          .firstOrNull,
+                      onDelete: (exercise) => _deleteExercise(ref, exercise),
+                      onToggleComplete: (exercise, completed) =>
+                          _toggleExerciseComplete(ref, exercise, completed),
+                    );
+                  },
                 ),
               ),
-              data: (exercises) {
-                final splits = splitsAsync.valueOrNull;
-                if (splits == null || splits.isEmpty || selectedSplitId == null) {
-                  return const SizedBox.shrink();
-                }
-                return _GymBody(
-                  exercises: exercises,
-                  splitName: splits
-                      .where((s) => s.id == selectedSplitId)
-                      .map((s) => s.name)
-                      .firstOrNull,
-                  onDelete: (exercise) => _deleteExercise(ref, exercise),
-                  onToggleComplete: (exercise, completed) =>
-                      _toggleExerciseComplete(ref, exercise, completed),
-                );
-              },
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -135,6 +183,103 @@ class WorkoutsScreen extends ConsumerWidget {
     final repo = ref.read(exercisesRepositoryProvider);
     if (uid == null || repo == null) return;
     await repo.deleteExercise(uid: uid, exerciseId: exercise.id);
+  }
+}
+
+class _StartWorkoutBanner extends ConsumerWidget {
+  const _StartWorkoutBanner({
+    required this.exercisesAsync,
+    required this.splitsAsync,
+    required this.selectedSplitId,
+  });
+
+  final AsyncValue<List<GymExercise>> exercisesAsync;
+  final AsyncValue<List<WorkoutSplit>> splitsAsync;
+  final String? selectedSplitId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final liveStatus = ref.watch(liveWorkoutStatusProvider).valueOrNull;
+    final exercises = exercisesAsync.valueOrNull ?? const <GymExercise>[];
+    final splits = splitsAsync.valueOrNull;
+    final splitName = splits
+            ?.where((s) => s.id == selectedSplitId)
+            .map((s) => s.name)
+            .firstOrNull ??
+        'Today\'s Workout';
+
+    if (selectedSplitId == null || splits == null || splits.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final exerciseCount = exercises.length;
+    final inSession = liveStatus?.isWorkingOut == true;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withValues(alpha: 0.18),
+              AppColors.surfaceElevated,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              inSession ? 'Session in progress' : 'Ready to train?',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              inSession
+                  ? 'Current: ${liveStatus?.activeExerciseLabel ?? splitName}'
+                  : exerciseCount > 0
+                      ? '$exerciseCount exercises lined up for $splitName'
+                      : 'Pick $splitName and start your live gym session',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () async {
+                if (inSession && exerciseCount > 0) {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => LiveWorkoutSessionScreen(
+                        exercises: exercises,
+                        scheduleName:
+                            liveStatus!.routineDisplayName.isNotEmpty
+                                ? liveStatus.routineDisplayName
+                                : splitName,
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
+                await showStartWorkoutSheet(context);
+              },
+              icon: Icon(
+                inSession ? Icons.play_arrow_rounded : Icons.bolt_rounded,
+              ),
+              label: Text(
+                inSession ? 'Resume Session' : 'Start Workout Session',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -216,7 +361,7 @@ class _GymBody extends StatelessWidget {
   }
 }
 
-class _ExerciseCard extends StatelessWidget {
+class _ExerciseCard extends ConsumerWidget {
   const _ExerciseCard({
     required this.exercise,
     required this.onDelete,
@@ -228,9 +373,10 @@ class _ExerciseCard extends StatelessWidget {
   final void Function(bool completed) onToggleComplete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final time = DateFormat.jm().format(exercise.timestamp);
     final done = exercise.isCompletedToday;
+    final exerciseId = exercise.exerciseId;
 
     return Dismissible(
       key: ValueKey(exercise.id),
@@ -248,9 +394,16 @@ class _ExerciseCard extends StatelessWidget {
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
         opacity: done ? 0.65 : 1,
-        child: Container(
+        child: Material(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: exerciseId == null || exerciseId.isEmpty
+              ? null
+              : () => context.push('/workouts/exercise/$exerciseId'),
+          child: Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: done
@@ -270,7 +423,10 @@ class _ExerciseCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ExerciseThumbnail(imageUrl: exercise.imageUrl),
+                _ExerciseThumbnail(
+                  imageUrl: exercise.imageUrl,
+                  exerciseId: exercise.exerciseId,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -370,20 +526,23 @@ class _ExerciseCard extends StatelessWidget {
               ),
             ],
           ),
+          ),
+          ),
         ),
-      ),
+        ),
       ),
     );
   }
 }
 
-class _ExerciseThumbnail extends StatelessWidget {
-  const _ExerciseThumbnail({this.imageUrl});
+class _ExerciseThumbnail extends ConsumerWidget {
+  const _ExerciseThumbnail({this.imageUrl, this.exerciseId});
 
   final String? imageUrl;
+  final String? exerciseId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const size = 72.0;
 
     if (imageUrl != null && imageUrl!.isNotEmpty) {
@@ -409,15 +568,23 @@ class _ExerciseThumbnail extends StatelessWidget {
               ),
             );
           },
-          errorBuilder: (_, __, ___) => _placeholder(size),
+          errorBuilder: (_, __, ___) => _placeholder(context, ref, size),
         ),
       );
     }
 
-    return _placeholder(size);
+    return _placeholder(context, ref, size);
   }
 
-  Widget _placeholder(double size) {
+  Widget _placeholder(BuildContext context, WidgetRef ref, double size) {
+    final id = exerciseId;
+    if (id != null && id.isNotEmpty) {
+      final exercise = ref.watch(exerciseByIdProvider(id)).valueOrNull;
+      if (exercise != null) {
+        return ExerciseCategoryIcon(category: exercise.category, size: size);
+      }
+    }
+
     return Container(
       width: size,
       height: size,

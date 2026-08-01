@@ -4,13 +4,28 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
 
   if (kIsWeb) {
-    GoogleFonts.config.allowRuntimeFetching = false;
+    ErrorWidget.builder = (details) {
+      return Material(
+        color: const Color(0xFF0D0F14),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              details.exceptionAsString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFFF6B6B)),
+            ),
+          ),
+        ),
+      );
+    };
   }
 
   try {

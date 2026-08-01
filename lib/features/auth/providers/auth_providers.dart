@@ -13,3 +13,6 @@ final authStateProvider = StreamProvider<User?>((ref) {
   if (repo == null) return Stream.value(null);
   return repo.authStateChanges();
 });
+
+/// True while sign-up is writing the Firestore profile (blocks premature redirects).
+final authRegistrationInProgressProvider = StateProvider<bool>((ref) => false);

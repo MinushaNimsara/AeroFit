@@ -1,5 +1,8 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
+import 'package:aerofit/features/exercise_library/domain/exercise.dart';
+import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_category_visual.dart';
+import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_picker_sheet.dart';
 import 'package:aerofit/features/workouts/domain/workout_split.dart';
 import 'package:aerofit/features/workouts/providers/exercises_providers.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +33,7 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
 
   late String _selectedSplitId;
   XFile? _pickedImage;
+  Exercise? _selectedLibraryExercise;
   _SavePhase _phase = _SavePhase.idle;
   String? _errorMessage;
 
@@ -45,6 +49,23 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
     _settingsController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFromLibrary() async {
+    final exercise = await showSingleExercisePickerSheet(context);
+    if (exercise != null && mounted) {
+      setState(() {
+        _selectedLibraryExercise = exercise;
+        _nameController.text = exercise.name;
+      });
+    }
+  }
+
+  void _clearLibrarySelection() {
+    setState(() {
+      _selectedLibraryExercise = null;
+      _nameController.clear();
+    });
   }
 
   Future<void> _capturePhoto() async {
@@ -92,6 +113,7 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
         weightOrSetting: _settingsController.text,
         notes: _notesController.text,
         imageUrl: imageUrl,
+        exerciseId: _selectedLibraryExercise?.id,
       );
 
       if (mounted) Navigator.of(context).pop();
@@ -202,17 +224,36 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
                             },
                     ),
                   if (widget.splits.length > 1) const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _nameController,
-                    enabled: !isBusy,
-                    decoration: const InputDecoration(
-                      labelText: 'Exercise name',
-                      hintText: 'e.g. Incline Treadmill Walk',
-                      prefixIcon: Icon(Icons.fitness_center_rounded),
+                  if (_selectedLibraryExercise != null)
+                    _SelectedLibraryExerciseCard(
+                      exercise: _selectedLibraryExercise!,
+                      onClear: isBusy ? null : _clearLibrarySelection,
+                    )
+                  else ...[
+                    TextFormField(
+                      controller: _nameController,
+                      enabled: !isBusy,
+                      decoration: const InputDecoration(
+                        labelText: 'Exercise name',
+                        hintText: 'e.g. Incline Treadmill Walk',
+                        prefixIcon: Icon(Icons.fitness_center_rounded),
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Required' : null,
                     ),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Required' : null,
-                  ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: isBusy ? null : _pickFromLibrary,
+                      icon: const Icon(Icons.menu_book_rounded, size: 18),
+                      label: const Text('Choose from Exercise Library'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _settingsController,
@@ -274,6 +315,61 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SelectedLibraryExerciseCard extends StatelessWidget {
+  const _SelectedLibraryExerciseCard({
+    required this.exercise,
+    required this.onClear,
+  });
+
+  final Exercise exercise;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          ExerciseCategoryIcon(category: exercise.category, size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  exercise.name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${exercise.category} · ${exercise.primaryMuscle}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+            tooltip: 'Choose a different exercise',
+          ),
+        ],
       ),
     );
   }

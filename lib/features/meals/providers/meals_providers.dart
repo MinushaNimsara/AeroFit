@@ -1,4 +1,3 @@
-import 'package:aerofit/core/config/env.dart';
 import 'package:aerofit/core/firebase/firebase_bootstrap.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/meals/data/meal_analyzer_service.dart';
@@ -12,7 +11,9 @@ final mealsRepositoryProvider = Provider<MealsRepository?>((ref) {
 });
 
 final mealAnalyzerServiceProvider = Provider<MealAnalyzerService>((ref) {
-  return const MealAnalyzerService();
+  final service = MealAnalyzerService();
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 final todayMealsStreamProvider = StreamProvider<List<MealEntry>>((ref) {
@@ -25,8 +26,6 @@ final todayMealsStreamProvider = StreamProvider<List<MealEntry>>((ref) {
 
   return repo.watchTodayMeals(auth.uid);
 });
-
-final dailyCalorieGoalProvider = Provider<int>((ref) => Env.dailyCalorieGoal);
 
 final todayCaloriesTotalProvider = Provider<int>((ref) {
   final meals = ref.watch(todayMealsStreamProvider).valueOrNull ?? [];

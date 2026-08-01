@@ -39,10 +39,18 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
     super.dispose();
   }
 
-  Future<void> _takePhotoAndAnalyze() async {
+  String _inferMealType() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Breakfast';
+    if (hour < 15) return 'Lunch';
+    if (hour < 20) return 'Dinner';
+    return 'Snack';
+  }
+
+  Future<void> _pickAndAnalyze(ImageSource source) async {
     final picker = ImagePicker();
     final image = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 85,
     );
     if (image == null || !mounted) return;
@@ -56,15 +64,38 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
       final analyzer = ref.read(mealAnalyzerServiceProvider);
       final result = await analyzer.analyzeFoodFromImage(image);
       if (!mounted) return;
-      setState(() {
-        _nameController.text = result.name;
-        _caloriesController.text = result.calories.toString();
-        _mode = LogMealMode.form;
-      });
+
+      final uid = ref.read(authStateProvider).value?.uid;
+      final repo = ref.read(mealsRepositoryProvider);
+      if (uid == null || repo == null) {
+        throw Exception('You must be signed in to log meals.');
+      }
+
+      await repo.addMeal(
+        uid: uid,
+        name: result.name,
+        calories: result.calories,
+        mealType: _inferMealType(),
+        imageUrl: image.path,
+        protein: result.protein,
+        carbs: result.carbs,
+        fats: result.fats,
+        ingredients: result.ingredients,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Logged ${result.name} — ${result.calories} kcal',
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Analysis failed: $e')),
+        SnackBar(content: Text('Gemini analysis failed: $e')),
       );
       setState(() => _mode = LogMealMode.choose);
     }
@@ -125,7 +156,8 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
           const SizedBox(height: 16),
           switch (_mode) {
             LogMealMode.choose => _ChooseMode(
-                onPhoto: _takePhotoAndAnalyze,
+                onCamera: () => _pickAndAnalyze(ImageSource.camera),
+                onGallery: () => _pickAndAnalyze(ImageSource.gallery),
                 onManual: () => setState(() => _mode = LogMealMode.form),
               ),
             LogMealMode.analyzing => const _AnalyzingView(),
@@ -148,11 +180,13 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
 
 class _ChooseMode extends StatelessWidget {
   const _ChooseMode({
-    required this.onPhoto,
+    required this.onCamera,
+    required this.onGallery,
     required this.onManual,
   });
 
-  final VoidCallback onPhoto;
+  final VoidCallback onCamera;
+  final VoidCallback onGallery;
   final VoidCallback onManual;
 
   @override
@@ -162,8 +196,15 @@ class _ChooseMode extends StatelessWidget {
         _OptionTile(
           icon: Icons.camera_alt_rounded,
           title: 'Take Photo',
-          subtitle: 'AI analyzes your meal (mock)',
-          onTap: onPhoto,
+          subtitle: 'Gemini AI estimates calories from your plate',
+          onTap: onCamera,
+        ),
+        const SizedBox(height: 10),
+        _OptionTile(
+          icon: Icons.photo_library_rounded,
+          title: 'Choose from Gallery',
+          subtitle: 'Pick a meal photo for Gemini AI analysis',
+          onTap: onGallery,
         ),
         const SizedBox(height: 10),
         _OptionTile(
@@ -240,20 +281,48 @@ class _AnalyzingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 32),
-      child: Column(
-        children: [
-          CircularProgressIndicator(color: AppColors.primary),
-          SizedBox(height: 16),
-          Text(
-            'AI is analyzing…',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 15,
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.35),
           ),
-        ],
+        ),
+        child: const Column(
+          children: [
+            SizedBox(
+              height: 44,
+              width: 44,
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
+                strokeWidth: 3,
+              ),
+            ),
+            SizedBox(height: 18),
+            Text(
+              'AI is analyzing your meal plate…',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Identifying food, macros, and ingredients',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -304,7 +373,7 @@ class _MealForm extends StatelessWidget {
                   Icon(Icons.auto_awesome_rounded, color: AppColors.primary),
                   SizedBox(width: 8),
                   Text(
-                    'Photo analyzed by AI',
+                    'Analyzed by Gemini AI',
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ],

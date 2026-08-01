@@ -30,12 +30,20 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
   }
 
   Future<void> _addTask(String title) async {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a task before adding it to your routine.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final uid = ref.read(authStateProvider).value?.uid;
     final repo = ref.read(tasksRepositoryProvider);
     if (uid == null || repo == null) return;
-
-    final trimmed = title.trim();
-    if (trimmed.isEmpty) return;
 
     setState(() => _isAdding = true);
     try {
@@ -328,6 +336,15 @@ class _TaskTile extends StatelessWidget {
                                 ? AppColors.textSecondary
                                 : AppColors.textPrimary,
                           ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: onDelete,
+                    tooltip: 'Delete task',
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.textSecondary,
+                      size: 20,
                     ),
                   ),
                 ],
