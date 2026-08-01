@@ -119,6 +119,12 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
     if (text.contains('401')) {
       return 'Meal analysis failed: invalid API key.';
     }
+    if (text.contains('429') || text.contains('RESOURCE_EXHAUSTED')) {
+      return 'Meal analysis quota exceeded. Try again in a minute, or use Manual Entry.';
+    }
+    if (text.contains('404') || text.contains('NOT_FOUND')) {
+      return 'Meal analysis model unavailable. Try again later, or use Manual Entry.';
+    }
     return 'Could not analyze that meal photo. Try again or use Manual Entry.';
   }
 

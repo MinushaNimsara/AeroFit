@@ -1,15 +1,14 @@
 # Builds AeroFit web and syncs output into web/ for Vercel.
 # Deletes stale main.dart.js so Flutter cannot reuse an old bundle.
-# Uses --wasm so capable browsers get the dart2wasm/skwasm build, with an
-# automatic dart2js/canvaskit fallback for browsers that can't run wasm GC.
-# (A custom flutter_bootstrap.js template previously forced a single
-# dart2js/canvaskit-only build, which triggers a CanvasKit/engine version
-# mismatch ("PathBuilder is not a constructor") on some mobile GPUs. Letting
-# Flutter generate its own bootstrap avoids that.)
+#
+# IMPORTANT: do NOT use --wasm here. dart2wasm does not reliably bake
+# --dart-define values (e.g. GEMINI_API_KEY) into main.dart.wasm, and modern
+# browsers prefer the wasm build when it is listed first — which produced
+# empty-key 403s for meal analysis. JS/canvaskit gets the defines correctly.
+#
 # Do NOT pass --no-web-resources-cdn: it skips downloading a fresh,
 # engine-matched CanvasKit build and silently reuses whatever old
-# web/canvaskit/* happens to be on disk (or committed to git), which is
-# exactly what causes that CanvasKit/engine mismatch.
+# web/canvaskit/* happens to be on disk (or committed to git).
 
 $ErrorActionPreference = "Stop"
 
@@ -23,8 +22,11 @@ Remove-Item -Force "web\main.dart.js" -ErrorAction SilentlyContinue
 
 Remove-Item -Force "web\flutter_bootstrap.js" -ErrorAction SilentlyContinue
 
+# Remove any previous wasm artifacts so browsers cannot pick a stale empty-key build.
+Remove-Item -Force "web\main.dart.wasm","web\main.dart.mjs","build\web\main.dart.wasm","build\web\main.dart.mjs" -ErrorAction SilentlyContinue
+
 # build/web is never touched by `flutter build web` for files it considers already present,
-# so a stale CanvasKit (mismatched engine revision vs a freshly compiled main.dart.js/.wasm)
+# so a stale CanvasKit (mismatched engine revision vs a freshly compiled main.dart.js)
 # can silently persist across many builds. Force a full re-fetch every time.
 
 Remove-Item -Recurse -Force "build\web" -ErrorAction SilentlyContinue
@@ -53,7 +55,11 @@ if (-not [string]::IsNullOrWhiteSpace($env:GEMINI_API_KEY)) {
   Write-Host "WARNING: GEMINI_API_KEY not set - meal photo analysis will fail in this build."
 }
 
-flutter build web --release --wasm --base-href / @geminiDefine
+if (-not [string]::IsNullOrWhiteSpace($env:GEMINI_MODEL)) {
+  $geminiDefine += "--dart-define=GEMINI_MODEL=$($env:GEMINI_MODEL)"
+}
+
+flutter build web --release --base-href / --no-wasm-dry-run @geminiDefine
 
 $cacheJs = Get-ChildItem ".dart_tool\flutter_build" -Recurse -Filter "main.dart.js" |
   Sort-Object LastWriteTime -Descending |
@@ -65,11 +71,12 @@ if ($null -ne $cacheJs) {
   Copy-Item -Path $cacheJs.FullName -Destination "web\main.dart.js" -Force
 }
 
+# Ensure no leftover wasm entry can be served from a previous --wasm build.
+Remove-Item -Force "web\main.dart.wasm","web\main.dart.mjs" -ErrorAction SilentlyContinue
+
 $sw = Join-Path web "flutter_service_worker.js"
 
 if (Test-Path $sw) { Remove-Item $sw -Force }
-
-# Verify the generated bootstrap has a buildConfig with both the wasm and JS-fallback builds.
 
 $bootstrapPath = Join-Path $root "web\flutter_bootstrap.js"
 
@@ -79,8 +86,12 @@ if ($bootstrap -notmatch '_flutter\.buildConfig\s*=') {
   throw "flutter_bootstrap.js is missing _flutter.buildConfig after build."
 }
 
-if ($bootstrap -notmatch 'dart2wasm') {
-  throw "flutter_bootstrap.js is missing the dart2wasm/skwasm build entry after build."
+if ($bootstrap -match '"compileTarget"\s*:\s*"dart2wasm"') {
+  throw "flutter_bootstrap.js unexpectedly includes a dart2wasm build (JS-only build required for GEMINI_API_KEY)."
+}
+
+if ($bootstrap -notmatch '"compileTarget"\s*:\s*"dart2js"') {
+  throw "flutter_bootstrap.js is missing the dart2js/canvaskit build entry."
 }
 
 if ($bootstrap -match '\{\{flutter_') {
@@ -88,6 +99,5 @@ if ($bootstrap -match '\{\{flutter_') {
 }
 
 $mainJs = Get-Item "web\main.dart.js"
-$mainWasm = Get-Item "web\main.dart.wasm"
 
-Write-Host "Web build ready in web/ (main.dart.js: $($mainJs.Length) bytes, main.dart.wasm: $($mainWasm.Length) bytes)"
+Write-Host "Web build ready in web/ (main.dart.js: $($mainJs.Length) bytes, JS/canvaskit only)"

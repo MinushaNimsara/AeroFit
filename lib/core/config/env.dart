@@ -32,6 +32,6 @@ class Env {
 
   static const geminiModel = String.fromEnvironment(
     'GEMINI_MODEL',
-    defaultValue: 'gemini-2.5-flash',
+    defaultValue: 'gemini-flash-latest',
   );
 }

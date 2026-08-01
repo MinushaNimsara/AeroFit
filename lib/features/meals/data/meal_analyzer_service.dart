@@ -100,24 +100,28 @@ RULES:
     required String mimeType,
   }) async {
     final primaryModel = _normalizeModelId(Env.geminiModel);
-    final attempts = <({String apiVersion, String modelId, bool useStructuredJson})>[
-      (
-        apiVersion: 'v1beta',
-        modelId: primaryModel,
-        useStructuredJson: _modelSupportsStructuredJson(primaryModel),
-      ),
-      if (primaryModel != 'gemini-2.5-flash')
-        (
-          apiVersion: 'v1beta',
-          modelId: 'gemini-2.5-flash',
-          useStructuredJson: true,
-        ),
-      (
-        apiVersion: 'v1',
-        modelId: primaryModel,
-        useStructuredJson: false,
-      ),
+    final fallbackModels = <String>[
+      primaryModel,
+      'gemini-flash-latest',
+      'gemini-2.0-flash-lite',
+      'gemini-2.0-flash',
+      'gemini-2.5-flash',
     ];
+    final seen = <String>{};
+    final attempts = <({String apiVersion, String modelId, bool useStructuredJson})>[];
+    for (final modelId in fallbackModels) {
+      if (!seen.add(modelId)) continue;
+      attempts.add((
+        apiVersion: 'v1beta',
+        modelId: modelId,
+        useStructuredJson: _modelSupportsStructuredJson(modelId),
+      ));
+    }
+    attempts.add((
+      apiVersion: 'v1',
+      modelId: primaryModel,
+      useStructuredJson: false,
+    ));
 
     http.Response? lastResponse;
     for (final attempt in attempts) {
@@ -151,9 +155,11 @@ RULES:
         }
       }
 
-      if (response.statusCode != 404) {
-        return response;
+      // Try the next model when this one is missing or retired for the key.
+      if (response.statusCode == 404) {
+        continue;
       }
+      return response;
     }
 
     return lastResponse ?? http.Response('No Gemini model attempts were made.', 500);
