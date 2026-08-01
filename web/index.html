@@ -36,6 +36,21 @@
   <script>
     (function () {
       try {
+        // Prefer portrait when installed as a PWA (manifest orientation alone
+        // is not enough on every Android Chrome version).
+        var lockPortrait = function () {
+          try {
+            if (screen.orientation && screen.orientation.lock) {
+              screen.orientation.lock('portrait').catch(function () {});
+            }
+          } catch (e) {}
+        };
+        lockPortrait();
+        window.addEventListener('load', lockPortrait);
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) lockPortrait();
+        });
+
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             for (var i = 0; i < regs.length; i++) {
