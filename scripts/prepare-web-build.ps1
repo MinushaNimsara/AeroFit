@@ -43,7 +43,17 @@ $indexHtml = $indexHtml -replace '<base href="[^"]*">', '<base href="$FLUTTER_BA
 
 Set-Content -Path $indexPath -Value $indexHtml -NoNewline
 
-flutter build web --release --wasm --base-href /
+# Optional meal-analysis key. Prefer an already-exported GEMINI_API_KEY env var;
+# never hardcode the key in this script or in source.
+$geminiDefine = @()
+if (-not [string]::IsNullOrWhiteSpace($env:GEMINI_API_KEY)) {
+  $geminiDefine += "--dart-define=GEMINI_API_KEY=$($env:GEMINI_API_KEY)"
+  Write-Host "Building with GEMINI_API_KEY from environment."
+} else {
+  Write-Host "WARNING: GEMINI_API_KEY not set - meal photo analysis will fail in this build."
+}
+
+flutter build web --release --wasm --base-href / @geminiDefine
 
 $cacheJs = Get-ChildItem ".dart_tool\flutter_build" -Recurse -Filter "main.dart.js" |
   Sort-Object LastWriteTime -Descending |

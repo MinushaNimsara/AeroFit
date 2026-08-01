@@ -66,6 +66,13 @@ RULES:
 ''';
 
   Future<MealAnalysisResult> analyzeFoodFromImage(XFile image) async {
+    if (Env.geminiApiKey.trim().isEmpty) {
+      throw Exception(
+        'GEMINI_API_KEY is not configured. Rebuild with '
+        '--dart-define=GEMINI_API_KEY=your-key.',
+      );
+    }
+
     final bytes = await image.readAsBytes();
     final mimeType = _resolveMimeType(image);
     final base64Image = base64Encode(bytes);

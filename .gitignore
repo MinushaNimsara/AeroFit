@@ -58,4 +58,6 @@ app.*.map.json
 /git/
 master admin user & pass.txt
 .tmp-*.js
+.tmp-*.png
 build_log.txt
+node_modules/

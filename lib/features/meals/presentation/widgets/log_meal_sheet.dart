@@ -2,6 +2,7 @@ import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/meals/domain/meal_entry.dart';
 import 'package:aerofit/features/meals/providers/meals_providers.dart';
+import 'package:aerofit/shared/widgets/gallery_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -95,10 +96,30 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gemini analysis failed: $e')),
+        SnackBar(
+          content: Text(_friendlyAnalysisError(e)),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
+        ),
       );
       setState(() => _mode = LogMealMode.choose);
     }
+  }
+
+  String _friendlyAnalysisError(Object error) {
+    final text = error.toString();
+    if (text.contains('GEMINI_API_KEY') ||
+        text.contains('API key is not configured')) {
+      return 'Meal photo analysis is not configured. Ask the admin to set GEMINI_API_KEY.';
+    }
+    if (text.contains('403') || text.contains('PERMISSION_DENIED')) {
+      return 'Meal analysis was denied (missing or invalid API key).';
+    }
+    if (text.contains('401')) {
+      return 'Meal analysis failed: invalid API key.';
+    }
+    return 'Could not analyze that meal photo. Try again or use Manual Entry.';
   }
 
   Future<void> _saveMeal() async {
@@ -194,21 +215,29 @@ class _ChooseMode extends StatelessWidget {
     return Column(
       children: [
         _OptionTile(
-          icon: Icons.camera_alt_rounded,
+          leading: const Icon(
+            Icons.camera_alt_rounded,
+            color: AppColors.primary,
+            size: 28,
+          ),
           title: 'Take Photo',
           subtitle: 'Gemini AI estimates calories from your plate',
           onTap: onCamera,
         ),
         const SizedBox(height: 10),
         _OptionTile(
-          icon: Icons.photo_library_rounded,
+          leading: const GalleryIcon(color: AppColors.primary, size: 28),
           title: 'Choose from Gallery',
           subtitle: 'Pick a meal photo for Gemini AI analysis',
           onTap: onGallery,
         ),
         const SizedBox(height: 10),
         _OptionTile(
-          icon: Icons.edit_note_rounded,
+          leading: const Icon(
+            Icons.edit_note_rounded,
+            color: AppColors.primary,
+            size: 28,
+          ),
           title: 'Manual Entry',
           subtitle: 'Enter name and calories yourself',
           onTap: onManual,
@@ -220,13 +249,13 @@ class _ChooseMode extends StatelessWidget {
 
 class _OptionTile extends StatelessWidget {
   const _OptionTile({
-    required this.icon,
+    required this.leading,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
-  final IconData icon;
+  final Widget leading;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -243,7 +272,7 @@ class _OptionTile extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(icon, color: AppColors.primary, size: 28),
+              leading,
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
