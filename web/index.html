@@ -60,9 +60,52 @@
               configurable: true
             });
           }
+          if (!('customData' in Object.prototype)) {
+            Object.defineProperty(Object.prototype, 'customData', {
+              value: {},
+              writable: true,
+              configurable: true
+            });
+          }
         } catch (_) {}
 
-        // 2. Safari Date.parse safety patch:
+        // 2. Fallbacks on Object.prototype for Safari/WebKit missing properties:
+        try {
+          if (!('metadata' in Object.prototype)) {
+            var _defaultMetadata = {
+              creationTime: new Date().toUTCString(),
+              lastSignInTime: new Date().toUTCString()
+            };
+            Object.defineProperty(Object.prototype, 'metadata', {
+              get: function() { return _defaultMetadata; },
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!('creationTime' in Object.prototype)) {
+            Object.defineProperty(Object.prototype, 'creationTime', {
+              get: function() { return new Date().toUTCString(); },
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!('lastSignInTime' in Object.prototype)) {
+            Object.defineProperty(Object.prototype, 'lastSignInTime', {
+              get: function() { return new Date().toUTCString(); },
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!('providerData' in Object.prototype)) {
+            Object.defineProperty(Object.prototype, 'providerData', {
+              get: function() { return []; },
+              configurable: true,
+              enumerable: false
+            });
+          }
+        } catch (_) {}
+
+        // 3. Safari Date.parse safety patch:
         // Safari returns NaN for non-ISO or empty/null date strings in Date.parse().
         // When firebase_auth_web converts creationTime / lastSignInTime with Date.parse(),
         // receiving NaN causes Dart's toDartInt to throw a TypeError ('Null check operator').
@@ -82,21 +125,47 @@
           };
         } catch (_) {}
 
-        // 3. Patch OAuthProvider credentialFromResult and credentialFromError:
-        // In firebase_auth_web, convertWebOAuthCredential calls
-        // `OAuthProvider.credentialFromResult(userCredential.jsObject)`.
-        // On Safari / Email-Password auth, if this returns an invalid object where providerId is missing/null,
-        // Dart throws 'Null check operator used on a null value'.
-        // Returning null tells Dart that no OAuth credential is present (expected for email/password).
-        function _patchOAuth(fbAuth) {
-          if (!fbAuth || fbAuth._patchedOAuth) return;
-          if (fbAuth.OAuthProvider) {
-            fbAuth._patchedOAuth = true;
-            var origResult = fbAuth.OAuthProvider.credentialFromResult;
-            if (typeof origResult === 'function') {
-              fbAuth.OAuthProvider.credentialFromResult = function(res) {
+        // 4. Bulletproof safety patches for window.firebase_auth:
+        function _installSafetyOnAuth(authModule) {
+          if (!authModule || authModule._patchedSafety) return authModule;
+          authModule._patchedSafety = true;
+
+          // A. getAdditionalUserInfo: In firebase_auth_web, convertWebAdditionalUserInfo calls
+          // getAdditionalUserInfo(userCredential). For email/password auth, this returns null.
+          // Dart2js inlines `s = a.a; r = s.isNewUser;` without a null check on `s`, throwing
+          // TypeError: null is not an object ('Null check operator used on a null value').
+          // Returning a safe fallback object completely fixes this crash.
+          var origGetAddInfo = authModule.getAdditionalUserInfo;
+          authModule.getAdditionalUserInfo = function(cred) {
+            var res = null;
+            try {
+              if (typeof origGetAddInfo === 'function') {
+                res = origGetAddInfo.call(authModule, cred);
+              }
+            } catch (_) {}
+            if (!res || typeof res !== 'object') {
+              res = {
+                isNewUser: false,
+                profile: {},
+                providerId: 'password',
+                username: null
+              };
+            }
+            return res;
+          };
+
+          // B. OAuthProvider credentialFromResult & credentialFromError:
+          // In firebase_auth_web, convertWebOAuthCredential calls
+          // OAuthProvider.credentialFromResult(userCredential.jsObject).
+          // If this returns an object without providerId/signInMethod (email/password auth),
+          // Dart throws 'Null check operator used on a null value'.
+          // Returning null indicates no OAuth credential (expected for email/password).
+          if (authModule.OAuthProvider) {
+            var origCredFromResult = authModule.OAuthProvider.credentialFromResult;
+            if (typeof origCredFromResult === 'function') {
+              authModule.OAuthProvider.credentialFromResult = function(res) {
                 try {
-                  var cred = origResult.call(fbAuth.OAuthProvider, res);
+                  var cred = origCredFromResult.call(authModule.OAuthProvider, res);
                   if (cred && (!cred.providerId || !cred.signInMethod)) {
                     return null;
                   }
@@ -106,11 +175,11 @@
                 }
               };
             }
-            var origError = fbAuth.OAuthProvider.credentialFromError;
-            if (typeof origError === 'function') {
-              fbAuth.OAuthProvider.credentialFromError = function(err) {
+            var origCredFromError = authModule.OAuthProvider.credentialFromError;
+            if (typeof origCredFromError === 'function') {
+              authModule.OAuthProvider.credentialFromError = function(err) {
                 try {
-                  var cred = origError.call(fbAuth.OAuthProvider, err);
+                  var cred = origCredFromError.call(authModule.OAuthProvider, err);
                   if (cred && (!cred.providerId || !cred.signInMethod)) {
                     return null;
                   }
@@ -121,6 +190,23 @@
               };
             }
           }
+
+          // C. multiFactor: Ensure multiFactor(user) never returns null or throws.
+          if (typeof authModule.multiFactor === 'function') {
+            var origMultiFactor = authModule.multiFactor;
+            authModule.multiFactor = function(user) {
+              try {
+                var res = origMultiFactor.call(authModule, user);
+                if (res && typeof res === 'object') return res;
+              } catch (_) {}
+              return {
+                enrolledFactors: [],
+                getSession: function() { return Promise.resolve({}); }
+              };
+            };
+          }
+
+          return authModule;
         }
 
         var _realFirebaseAuth = window.firebase_auth || null;
@@ -132,22 +218,21 @@
               return _realFirebaseAuth;
             },
             set: function(val) {
-              _realFirebaseAuth = val;
-              _patchOAuth(val);
+              _realFirebaseAuth = _installSafetyOnAuth(val);
             }
           });
         } catch (_) {}
 
         if (_realFirebaseAuth) {
-          _patchOAuth(_realFirebaseAuth);
+          _installSafetyOnAuth(_realFirebaseAuth);
         }
         setInterval(function() {
           try {
-            if (window.firebase_auth) {
-              _patchOAuth(window.firebase_auth);
+            if (window.firebase_auth && !window.firebase_auth._patchedSafety) {
+              _installSafetyOnAuth(window.firebase_auth);
             }
           } catch (_) {}
-        }, 100);
+        }, 50);
 
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -168,6 +253,6 @@
   </script>
 
   <!-- Official Flutter web bootstrap (flutter.js + buildConfig + loader.load). -->
-  <script src="flutter_bootstrap_v6.js" async></script>
+  <script src="flutter_bootstrap_v7.js" async></script>
 </body>
 </html>

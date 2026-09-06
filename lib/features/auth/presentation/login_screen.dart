@@ -91,7 +91,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         setState(() => _errorMessage = msg);
         _showFloatingSnackBar(msg);
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Sign in error: $e\n$stack');
       if (mounted) {
         final msg = 'Sign in failed: $e';
         setState(() => _errorMessage = msg);
@@ -145,7 +146,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (mounted) {
         _showFloatingSnackBar(message);
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Sign up error: $e\n$stack');
       if (mounted) {
         _showFloatingSnackBar('Sign up error: $e');
       }
@@ -292,7 +294,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05, end: 0),
                   const SizedBox(height: 16),
                   Text(
-                    'AeroFit Build 2026.09.06-v6',
+                    'AeroFit Build 2026.09.06-v7',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary.withValues(alpha: 0.5),
