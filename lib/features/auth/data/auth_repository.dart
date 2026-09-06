@@ -97,8 +97,18 @@ class AuthRepository {
       }
       rethrow;
     } catch (e) {
-      // If client-side FlutterFire/Safari throws (e.g. Null check operator, TypeError, etc.),
-      // execute the fallback via Firebase Auth Identity Toolkit REST API.
+      // If client-side FlutterFire/Safari throws, first check if the account was
+      // actually created on Firebase Auth and recover session & profile:
+      final recovered = await _tryRecoverPartialRegistration(
+        email: normalizedEmail,
+        password: normalizedPassword,
+        profile: profile,
+      );
+      if (recovered != null) {
+        return recovered;
+      }
+
+      // If not yet created, execute the fallback via Firebase Auth Identity Toolkit REST API.
       try {
         return await _signUpViaRestFallback(
           email: normalizedEmail,
@@ -108,16 +118,9 @@ class AuthRepository {
       } on FirebaseAuthException {
         rethrow;
       } catch (restErr) {
-        final recovered = await _tryRecoverPartialRegistration(
-          email: normalizedEmail,
-          password: normalizedPassword,
-          profile: profile,
-        );
-        if (recovered != null) {
-          return recovered;
-        }
-        throw Exception(
-          'Could not complete registration. Please try signing in or use another email.',
+        throw FirebaseAuthException(
+          code: 'registration-failed',
+          message: 'Registration could not be completed: $e',
         );
       }
     }

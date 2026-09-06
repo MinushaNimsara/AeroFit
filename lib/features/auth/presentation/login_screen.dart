@@ -78,9 +78,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         password: _signInPassword.text,
       );
     } on FirebaseAuthException catch (e) {
-      setState(() => _errorMessage = e.message ?? 'Sign in failed.');
+      final msg = switch (e.code) {
+        'user-not-found' => 'No account found with this email.',
+        'wrong-password' => 'Incorrect password.',
+        'invalid-credential' => 'Incorrect email or password.',
+        'invalid-email' => 'Enter a valid email address.',
+        'user-disabled' => 'This account has been disabled.',
+        'too-many-requests' => 'Too many attempts. Please try again later.',
+        _ => e.message ?? 'Sign in failed (${e.code}).',
+      };
+      if (mounted) {
+        setState(() => _errorMessage = msg);
+        _showFloatingSnackBar(msg);
+      }
     } catch (e) {
-      setState(() => _errorMessage = 'Sign in failed. Please try again.');
+      if (mounted) {
+        final msg = 'Sign in failed: $e';
+        setState(() => _errorMessage = msg);
+        _showFloatingSnackBar(msg);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -131,16 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } catch (e) {
       if (mounted) {
-        final errText = e.toString().toLowerCase();
-        if (errText.contains('null check operator') ||
-            errText.contains('typeerror') ||
-            errText.contains('not an object')) {
-          _showFloatingSnackBar(
-            'Account setup in progress. Please switch to Sign In to log in.',
-          );
-        } else {
-          _showFloatingSnackBar('Sign up error: $e');
-        }
+        _showFloatingSnackBar('Sign up error: $e');
       }
     } finally {
       ref.read(authRegistrationInProgressProvider.notifier).state = false;
@@ -285,7 +292,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05, end: 0),
                   const SizedBox(height: 16),
                   Text(
-                    'AeroFit Build 2026.09.06-v5',
+                    'AeroFit Build 2026.09.06-v6',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary.withValues(alpha: 0.5),
