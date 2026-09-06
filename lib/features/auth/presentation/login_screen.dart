@@ -21,7 +21,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _signInFormKey = GlobalKey<FormState>();
-  final _signUpFormKey = GlobalKey<FormState>();
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   final _signInEmail = TextEditingController();
@@ -131,7 +130,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar(e.toString());
+        _showErrorSnackBar('Sign up error: $e');
       }
     } finally {
       ref.read(authRegistrationInProgressProvider.notifier).state = false;
@@ -261,7 +260,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   )
                                 : _SignUpForm(
                                     key: const ValueKey('sign-up'),
-                                    formKey: _signUpFormKey,
                                     isLoading: _isLoading,
                                     onSubmit: _signUp,
                                     onShowError: _showErrorSnackBar,
@@ -271,6 +269,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                     ),
                   ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05, end: 0),
+                  const SizedBox(height: 16),
+                  Text(
+                    'AeroFit Build 2026.09.06-v2',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
+                          fontSize: 11,
+                        ),
+                  ),
                 ],
               ),
             ),
@@ -307,70 +314,66 @@ class _SignInFormState extends State<_SignInForm> {
 
   @override
   Widget build(BuildContext context) {
-    return AutofillGroup(
-      child: Form(
-        key: widget.formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _AuthTextField(
-              controller: widget.email,
-              label: 'Email',
-              hint: 'you@example.com',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              autocorrect: false,
-              autofillHints: const [AutofillHints.email, AutofillHints.username],
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Enter your email';
-                if (!v.contains('@')) return 'Enter a valid email';
-                return null;
-              },
-            ),
-            const SizedBox(height: 10),
-            _AuthTextField(
-              controller: widget.password,
-              label: 'Password',
-              hint: 'Enter your password',
-              icon: Icons.lock_outline_rounded,
-              obscureText: _obscurePassword,
-              textInputAction: TextInputAction.done,
-              autofillHints: const [AutofillHints.password],
-              onFieldSubmitted: widget.isLoading ? null : (_) => widget.onSubmit(),
-              suffixIcon: IconButton(
-                onPressed: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
+    return Form(
+      key: widget.formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _AuthTextField(
+            controller: widget.email,
+            label: 'Email',
+            hint: 'you@example.com',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            autocorrect: false,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Enter your email';
+              if (!v.contains('@')) return 'Enter a valid email';
+              return null;
+            },
+          ),
+          const SizedBox(height: 10),
+          _AuthTextField(
+            controller: widget.password,
+            label: 'Password',
+            hint: 'Enter your password',
+            icon: Icons.lock_outline_rounded,
+            obscureText: _obscurePassword,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: widget.isLoading ? null : (_) => widget.onSubmit(),
+            suffixIcon: IconButton(
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
               ),
-              validator: (v) {
-                if (v == null || v.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
             ),
-            const SizedBox(height: 14),
-            FilledButton(
-              onPressed: widget.isLoading ? null : widget.onSubmit,
-              child: widget.isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.background,
-                      ),
-                    )
-                  : const Text('Sign In'),
-            ),
-          ],
-        ),
+            validator: (v) {
+              if (v == null || v.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: widget.isLoading ? null : widget.onSubmit,
+            child: widget.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.background,
+                    ),
+                  )
+                : const Text('Sign In'),
+          ),
+        ],
       ),
     );
   }
@@ -389,7 +392,6 @@ class _AuthTextField extends StatelessWidget {
     this.suffixIcon,
     this.inputFormatters,
     this.textCapitalization = TextCapitalization.none,
-    this.autofillHints,
     this.validator,
     this.onFieldSubmitted,
   });
@@ -405,7 +407,6 @@ class _AuthTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final List<TextInputFormatter>? inputFormatters;
   final TextCapitalization textCapitalization;
-  final Iterable<String>? autofillHints;
   final String? Function(String?)? validator;
   final void Function(String)? onFieldSubmitted;
 
@@ -419,7 +420,6 @@ class _AuthTextField extends StatelessWidget {
       autocorrect: autocorrect,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
-      autofillHints: autofillHints,
       onFieldSubmitted: onFieldSubmitted,
       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: AppColors.textPrimary,
@@ -440,13 +440,11 @@ class _AuthTextField extends StatelessWidget {
 class _SignUpForm extends StatefulWidget {
   const _SignUpForm({
     super.key,
-    required this.formKey,
     required this.isLoading,
     required this.onSubmit,
     required this.onShowError,
   });
 
-  final GlobalKey<FormState> formKey;
   final bool isLoading;
   final Future<void> Function(SignUpProfile profile, String email, String password)
       onSubmit;
@@ -457,6 +455,7 @@ class _SignUpForm extends StatefulWidget {
 }
 
 class _SignUpFormState extends State<_SignUpForm> {
+  final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -508,47 +507,40 @@ class _SignUpFormState extends State<_SignUpForm> {
     });
 
     try {
-      try {
-        FocusScope.of(context).unfocus();
-      } catch (_) {}
-
-      final formState = widget.formKey.currentState;
-      if (formState == null) {
-        _showSnackBar('Form is not ready. Please try again.');
-        return;
-      }
-
-      late final bool isValid;
-      try {
-        isValid = formState.validate();
-      } catch (e) {
-        _showSnackBar('Could not validate the form: $e');
-        return;
-      }
-      if (!isValid) {
-        _showSnackBar('Please fix the highlighted fields and try again.');
-        return;
-      }
-
-      if (_password.text.trim() != _confirmPasswordController.text.trim()) {
-        _showSnackBar('Passwords do not match');
-        return;
-      }
-
+      final name = _name.text.trim();
+      final email = _email.text.trim();
+      final password = _password.text;
+      final confirmPassword = _confirmPasswordController.text;
       final age = _parseAgeValue(_age.text) ?? 0;
       final heightCm = _parseDecimalValue(_height.text) ?? 0;
       final weightKg = _parseDecimalValue(_weight.text) ?? 0;
 
-      if (age <= 0) {
-        _showSnackBar('Enter a valid age');
+      if (name.isEmpty) {
+        _showSnackBar('Please enter your full name');
         return;
       }
-      if (heightCm <= 0) {
-        _showSnackBar('Enter a valid height');
+      if (email.isEmpty || !email.contains('@')) {
+        _showSnackBar('Please enter a valid email address');
         return;
       }
-      if (weightKg <= 0) {
-        _showSnackBar('Enter a valid weight');
+      if (password.length < 6) {
+        _showSnackBar('Password must be at least 6 characters');
+        return;
+      }
+      if (password != confirmPassword) {
+        _showSnackBar('Passwords do not match');
+        return;
+      }
+      if (age < 13 || age > 120) {
+        _showSnackBar('Age must be between 13 and 120');
+        return;
+      }
+      if (heightCm < 100 || heightCm > 250) {
+        _showSnackBar('Height must be between 100 and 250 cm');
+        return;
+      }
+      if (weightKg < 30 || weightKg > 300) {
+        _showSnackBar('Weight must be between 30 and 300 kg');
         return;
       }
 
@@ -560,53 +552,30 @@ class _SignUpFormState extends State<_SignUpForm> {
       }
       setState(() => _activityLevelError = null);
 
+      try {
+        final formState = _formKey.currentState;
+        if (formState != null && !formState.validate()) {
+          _showSnackBar('Please check the highlighted fields');
+          return;
+        }
+      } catch (_) {
+        // Fallback: manual checks above already fully validated all inputs
+      }
+
       await widget.onSubmit(
         SignUpProfile(
-          displayName: _name.text.trim(),
+          displayName: name,
           gender: _gender,
           age: age,
           heightCm: heightCm,
           weightKg: weightKg,
           activityLevel: activityLevel,
         ),
-        _email.text.trim(),
-        _password.text,
+        email,
+        password,
       );
     } catch (e) {
-      final message = e.toString();
-      if (message.contains('Null check operator')) {
-        // Fallback if browser engine fired a teardown event: attempt submission with current form values
-        final age = _parseAgeValue(_age.text) ?? 0;
-        final heightCm = _parseDecimalValue(_height.text) ?? 0;
-        final weightKg = _parseDecimalValue(_weight.text) ?? 0;
-        if (age > 0 &&
-            heightCm > 0 &&
-            weightKg > 0 &&
-            _name.text.trim().isNotEmpty &&
-            _email.text.contains('@') &&
-            _password.text.length >= 6 &&
-            _password.text.trim() == _confirmPasswordController.text.trim()) {
-          try {
-            await widget.onSubmit(
-              SignUpProfile(
-                displayName: _name.text.trim(),
-                gender: _gender,
-                age: age,
-                heightCm: heightCm,
-                weightKg: weightKg,
-                activityLevel: _resolveActivityLevel(_activityLevel),
-              ),
-              _email.text.trim(),
-              _password.text,
-            );
-            return;
-          } catch (inner) {
-            _showSnackBar(inner.toString());
-            return;
-          }
-        }
-      }
-      _showSnackBar(message);
+      _showSnackBar('Registration error: $e');
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -646,209 +615,203 @@ class _SignUpFormState extends State<_SignUpForm> {
   Widget build(BuildContext context) {
     final isBusy = widget.isLoading || _isSubmitting;
 
-    return AutofillGroup(
-      child: Form(
-        key: widget.formKey,
-        autovalidateMode: _showValidationErrors
-            ? AutovalidateMode.always
-            : AutovalidateMode.disabled,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _AuthTextField(
-              controller: _name,
-              label: 'Full Name',
-              hint: 'Full Name',
-              icon: Icons.person_outline_rounded,
-              textCapitalization: TextCapitalization.words,
-              autofillHints: const [AutofillHints.name],
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Enter your name';
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-            _AuthTextField(
-              controller: _email,
-              label: 'Email',
-              hint: 'you@example.com',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              autofillHints: const [AutofillHints.email],
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Enter your email';
-                if (!v.contains('@')) return 'Enter a valid email';
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-            _AuthTextField(
-              controller: _password,
-              label: 'Password',
-              hint: 'At least 6 characters',
-              icon: Icons.lock_outline_rounded,
-              obscureText: _obscurePassword,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.newPassword],
-              suffixIcon: IconButton(
-                onPressed: isBusy
-                    ? null
-                    : () => setState(() => _obscurePassword = !_obscurePassword),
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
-              ),
-              validator: (v) {
-                if (v == null || v.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-            _AuthTextField(
-              controller: _confirmPasswordController,
-              label: 'Confirm Password',
-              hint: 'Confirm your password',
-              icon: Icons.lock_outline_rounded,
-              obscureText: _obscureConfirmPassword,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.newPassword],
-              suffixIcon: IconButton(
-                onPressed: isBusy
-                    ? null
-                    : () => setState(
-                          () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                        ),
-                icon: Icon(
-                  _obscureConfirmPassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
-              ),
-              validator: (v) {
-                if (v == null || v.isEmpty) {
-                  return 'Confirm your password';
-                }
-                if (v != _password.text) {
-                  return 'Passwords do not match';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Gender',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<Gender>(
-              segments: Gender.values
-                  .map(
-                    (gender) => ButtonSegment(
-                      value: gender,
-                      label: Text(gender.label),
-                    ),
-                  )
-                  .toList(),
-              selected: {_gender},
-              onSelectionChanged: isBusy
+    return Form(
+      key: _formKey,
+      autovalidateMode: _showValidationErrors
+          ? AutovalidateMode.always
+          : AutovalidateMode.disabled,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _AuthTextField(
+            controller: _name,
+            label: 'Full Name',
+            hint: 'Full Name',
+            icon: Icons.person_outline_rounded,
+            textCapitalization: TextCapitalization.words,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Enter your name';
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          _AuthTextField(
+            controller: _email,
+            label: 'Email',
+            hint: 'you@example.com',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Enter your email';
+              if (!v.contains('@')) return 'Enter a valid email';
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          _AuthTextField(
+            controller: _password,
+            label: 'Password',
+            hint: 'At least 6 characters',
+            icon: Icons.lock_outline_rounded,
+            obscureText: _obscurePassword,
+            textInputAction: TextInputAction.next,
+            suffixIcon: IconButton(
+              onPressed: isBusy
                   ? null
-                  : (selection) {
-                      if (selection.isEmpty) return;
-                      setState(() => _gender = selection.first);
-                    },
-            ),
-            const SizedBox(height: 14),
-            _AuthTextField(
-              controller: _age,
-              label: 'Age (years)',
-              hint: 'e.g. 25',
-              icon: Icons.cake_outlined,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: _validateAge,
-            ),
-            const SizedBox(height: 14),
-            _AuthTextField(
-              controller: _height,
-              label: 'Height (cm)',
-              hint: 'e.g. 175',
-              icon: Icons.height_rounded,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
-              ],
-              validator: _validateHeight,
-            ),
-            const SizedBox(height: 14),
-            _AuthTextField(
-              controller: _weight,
-              label: 'Weight (kg)',
-              hint: 'e.g. 70',
-              icon: Icons.monitor_weight_outlined,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
-              ],
-              validator: _validateWeight,
-            ),
-            const SizedBox(height: 14),
-            InputDecorator(
-              decoration: InputDecoration(
-                labelText: 'Activity level',
-                prefixIcon: const Icon(Icons.directions_run_outlined),
-                errorText: _activityLevelError,
+                  : () => setState(() => _obscurePassword = !_obscurePassword),
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<ActivityLevel>(
-                  isExpanded: true,
-                  value: _activityLevel,
-                  items: ActivityLevel.values
-                      .map(
-                        (level) => DropdownMenuItem(
-                          value: level,
-                          child: Text(
-                            level.label,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: isBusy
-                      ? null
-                      : (value) {
-                          if (value == null) return;
-                          setState(() {
-                            _activityLevel = value;
-                            _activityLevelError = null;
-                          });
-                        },
+            ),
+            validator: (v) {
+              if (v == null || v.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          _AuthTextField(
+            controller: _confirmPasswordController,
+            label: 'Confirm Password',
+            hint: 'Confirm your password',
+            icon: Icons.lock_outline_rounded,
+            obscureText: _obscureConfirmPassword,
+            textInputAction: TextInputAction.next,
+            suffixIcon: IconButton(
+              onPressed: isBusy
+                  ? null
+                  : () => setState(
+                        () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                      ),
+              icon: Icon(
+                _obscureConfirmPassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) {
+                return 'Confirm your password';
+              }
+              if (v != _password.text) {
+                return 'Passwords do not match';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Gender',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: AppColors.textSecondary,
                 ),
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<Gender>(
+            segments: Gender.values
+                .map(
+                  (gender) => ButtonSegment(
+                    value: gender,
+                    label: Text(gender.label),
+                  ),
+                )
+                .toList(),
+            selected: {_gender},
+            onSelectionChanged: isBusy
+                ? null
+                : (selection) {
+                    if (selection.isEmpty) return;
+                    setState(() => _gender = selection.first);
+                  },
+          ),
+          const SizedBox(height: 14),
+          _AuthTextField(
+            controller: _age,
+            label: 'Age (years)',
+            hint: 'e.g. 25',
+            icon: Icons.cake_outlined,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            validator: _validateAge,
+          ),
+          const SizedBox(height: 14),
+          _AuthTextField(
+            controller: _height,
+            label: 'Height (cm)',
+            hint: 'e.g. 175',
+            icon: Icons.height_rounded,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
+            ],
+            validator: _validateHeight,
+          ),
+          const SizedBox(height: 14),
+          _AuthTextField(
+            controller: _weight,
+            label: 'Weight (kg)',
+            hint: 'e.g. 70',
+            icon: Icons.monitor_weight_outlined,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
+            ],
+            validator: _validateWeight,
+          ),
+          const SizedBox(height: 14),
+          InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Activity level',
+              prefixIcon: const Icon(Icons.directions_run_outlined),
+              errorText: _activityLevelError,
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<ActivityLevel>(
+                isExpanded: true,
+                value: _activityLevel,
+                items: ActivityLevel.values
+                    .map(
+                      (level) => DropdownMenuItem(
+                        value: level,
+                        child: Text(
+                          level.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: isBusy
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _activityLevel = value;
+                          _activityLevelError = null;
+                        });
+                      },
               ),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: isBusy ? null : _submit,
-                child: isBusy
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Create Account'),
-              ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: isBusy ? null : _submit,
+              child: isBusy
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Create Account'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

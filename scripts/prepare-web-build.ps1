@@ -98,6 +98,27 @@ if ($bootstrap -match '\{\{flutter_') {
   throw "flutter_bootstrap.js still has unresolved template placeholders."
 }
 
-$mainJs = Get-Item "web\main.dart.js"
+$buildTimestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 
-Write-Host "Web build ready in web/ (main.dart.js: $($mainJs.Length) bytes, JS/canvaskit only)"
+# Remove serviceWorkerSettings so flutter.js NEVER registers or tries to load a service worker
+$bootstrap = $bootstrap -replace 'serviceWorkerSettings:\s*\{[^}]*\}', ''
+
+# Generate standard flutter_bootstrap.js
+$stdBootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', "`"mainJsPath`":`"main.dart.js?v=$buildTimestamp`""
+Set-Content -Path $bootstrapPath -Value $stdBootstrap -NoNewline
+
+# Generate completely new versioned filenames to 100% bypass all Vercel/Safari caches
+$v2Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v2.dart.js"'
+$bootstrapV2Path = Join-Path $root "web\flutter_bootstrap_v2.js"
+Set-Content -Path $bootstrapV2Path -Value $v2Bootstrap -NoNewline
+
+$mainJs = Get-Item "web\main.dart.js"
+$mainV2Path = Join-Path $root "web\main_v2.dart.js"
+Copy-Item -Path $mainJs.FullName -Destination $mainV2Path -Force
+
+# Point index.html to flutter_bootstrap_v2.js
+$indexContent = Get-Content $indexPath -Raw
+$indexContent = $indexContent -replace 'src="flutter_bootstrap[^"]*"', 'src="flutter_bootstrap_v2.js"'
+Set-Content -Path $indexPath -Value $indexContent -NoNewline
+
+Write-Host "Web build ready in web/ (main.dart.js: $($mainJs.Length) bytes, created main_v2.dart.js & flutter_bootstrap_v2.js)"
