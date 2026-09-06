@@ -51,6 +51,24 @@
           if (!document.hidden) lockPortrait();
         });
 
+        // Safari Date.parse safety patch:
+        // Safari returns NaN for non-ISO or empty/null date strings in Date.parse().
+        // When firebase_auth_web converts creationTime / lastSignInTime with Date.parse(),
+        // receiving NaN causes Dart's toDartInt to throw a TypeError ('Null check operator').
+        // Returning 0 or Date.now() prevents this crash completely.
+        var _origDateParse = Date.parse;
+        Date.parse = function (str) {
+          if (!str) return 0;
+          var val = _origDateParse(str);
+          if (isNaN(val)) {
+            try {
+              var s = String(str).trim();
+              val = _origDateParse(s.replace(/(\d{4}) (\d{2}):/, '$1T$2:'));
+            } catch (_) {}
+          }
+          return isNaN(val) ? 0 : val;
+        };
+
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             for (var i = 0; i < regs.length; i++) {
@@ -70,6 +88,6 @@
   </script>
 
   <!-- Official Flutter web bootstrap (flutter.js + buildConfig + loader.load). -->
-  <script src="flutter_bootstrap_v2.js" async></script>
+  <script src="flutter_bootstrap_v3.js" async></script>
 </body>
 </html>

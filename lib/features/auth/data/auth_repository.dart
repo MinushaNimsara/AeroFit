@@ -30,29 +30,33 @@ class AuthRepository {
       password: password,
     );
 
-    final user = credential.user;
-    if (user != null) {
-      final authEmail = user.email?.trim();
-      final authDisplayName = user.displayName?.trim();
-      final resolvedName = authDisplayName != null && authDisplayName.isNotEmpty
-          ? authDisplayName
-          : UserProfile.emailPrefix(authEmail);
+    try {
+      final user = credential.user ?? _auth.currentUser;
+      if (user != null) {
+        final authEmail = user.email?.trim();
+        final authDisplayName = user.displayName?.trim();
+        final resolvedName = authDisplayName != null && authDisplayName.isNotEmpty
+            ? authDisplayName
+            : UserProfile.emailPrefix(authEmail);
 
-      final payload = <String, dynamic>{};
-      if (authEmail != null && authEmail.isNotEmpty) {
-        payload['email'] = authEmail;
+        final payload = <String, dynamic>{};
+        if (authEmail != null && authEmail.isNotEmpty) {
+          payload['email'] = authEmail;
+        }
+        if (resolvedName.isNotEmpty) {
+          payload['rosterDisplayName'] = resolvedName;
+          payload['username'] = resolvedName;
+          payload['displayName'] = resolvedName;
+        }
+        if (payload.isNotEmpty) {
+          await _firestore.collection('users').doc(user.uid).set(
+                payload,
+                SetOptions(merge: true),
+              );
+        }
       }
-      if (resolvedName.isNotEmpty) {
-        payload['rosterDisplayName'] = resolvedName;
-        payload['username'] = resolvedName;
-        payload['displayName'] = resolvedName;
-      }
-      if (payload.isNotEmpty) {
-        await _firestore.collection('users').doc(user.uid).set(
-              payload,
-              SetOptions(merge: true),
-            );
-      }
+    } catch (_) {
+      // Do not block sign-in if metadata syncing fails on Safari.
     }
 
     return credential;
@@ -74,6 +78,14 @@ class AuthRepository {
       );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
+        final recovered = await _tryRecoverPartialRegistration(
+          email: normalizedEmail,
+          password: normalizedPassword,
+          profile: profile,
+        );
+        if (recovered != null) {
+          return recovered;
+        }
         throw FirebaseAuthException(
           code: e.code,
           message:
@@ -90,6 +102,18 @@ class AuthRepository {
       if (recovered != null) {
         return recovered;
       }
+
+      final errLower = e.toString().toLowerCase();
+      if (errLower.contains('null check operator') ||
+          errLower.contains('typeerror') ||
+          errLower.contains('not an object')) {
+        // On iOS Safari, firebase_auth_web can crash converting Firebase Auth error responses.
+        throw FirebaseAuthException(
+          code: 'registration-failed',
+          message:
+              'This email may already be in use. Switch to Sign In to log in.',
+        );
+      }
       throw Exception('Could not create your account: $e');
     }
   }
@@ -104,14 +128,19 @@ class AuthRepository {
       password: password,
     );
 
-    final user = credential.user;
-    final uid = user?.uid;
-    if (user == null || uid == null || uid.isEmpty) {
+    String? uid;
+    try {
+      uid = credential.user?.uid;
+    } catch (_) {}
+    uid ??= _auth.currentUser?.uid;
+
+    if (uid == null || uid.isEmpty) {
       throw Exception('Account was created but no user session was returned.');
     }
 
     try {
-      await user.getIdToken(true);
+      final u = credential.user ?? _auth.currentUser;
+      await u?.getIdToken(true);
     } catch (_) {
       // Continue — Firestore may still accept the active session on web/iOS Safari.
     }
@@ -140,8 +169,12 @@ class AuthRepository {
         email: email,
         password: password,
       );
-      final user = credential.user;
-      final uid = user?.uid;
+      String? uid;
+      try {
+        uid = credential.user?.uid;
+      } catch (_) {}
+      uid ??= _auth.currentUser?.uid;
+
       if (uid == null || uid.isEmpty) {
         return null;
       }
@@ -159,11 +192,8 @@ class AuthRepository {
           profile: profile,
           displayName: displayName,
         );
-        return credential;
       }
-
-      await _auth.signOut();
-      return null;
+      return credential;
     } catch (_) {
       return null;
     }

@@ -130,7 +130,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Sign up error: $e');
+        final errText = e.toString().toLowerCase();
+        if (errText.contains('null check operator') ||
+            errText.contains('typeerror') ||
+            errText.contains('not an object')) {
+          _showErrorSnackBar(
+            'This email may already be registered. Switch to Sign In and log in instead.',
+          );
+        } else {
+          _showErrorSnackBar('Sign up error: $e');
+        }
       }
     } finally {
       ref.read(authRegistrationInProgressProvider.notifier).state = false;
@@ -271,7 +280,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05, end: 0),
                   const SizedBox(height: 16),
                   Text(
-                    'AeroFit Build 2026.09.06-v2',
+                    'AeroFit Build 2026.09.06-v3',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary.withValues(alpha: 0.5),
@@ -575,7 +584,16 @@ class _SignUpFormState extends State<_SignUpForm> {
         password,
       );
     } catch (e) {
-      _showSnackBar('Registration error: $e');
+      final errText = e.toString().toLowerCase();
+      if (errText.contains('null check operator') ||
+          errText.contains('typeerror') ||
+          errText.contains('not an object')) {
+        _showSnackBar(
+          'This email may already be registered. Switch to Sign In and log in instead.',
+        );
+      } else {
+        _showSnackBar('Registration error: $e');
+      }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
