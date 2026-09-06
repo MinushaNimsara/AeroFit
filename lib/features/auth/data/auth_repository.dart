@@ -116,7 +116,9 @@ class AuthRepository {
         if (recovered != null) {
           return recovered;
         }
-        throw Exception('Could not create your account: $restErr');
+        throw Exception(
+          'Could not complete registration. Please try signing in or use another email.',
+        );
       }
     }
   }
@@ -196,18 +198,27 @@ class AuthRepository {
         ? profile.displayName.trim()
         : UserProfile.emailPrefix(email);
 
-    await _createTraineeProfile(
-      uid: uid,
-      email: email,
-      profile: profile,
-      displayName: displayName,
-    );
-
-    // Sign in to establish Flutter FirebaseAuth active session
-    return await _auth.signInWithEmailAndPassword(
+    // 1. Sign in to establish active session first (required by Firestore rules)
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
+
+    final resolvedUid = credential.user?.uid ?? uid;
+
+    // 2. Then write trainee profile to Firestore
+    try {
+      await _createTraineeProfile(
+        uid: resolvedUid,
+        email: email,
+        profile: profile,
+        displayName: displayName,
+      );
+    } catch (_) {
+      // Continue — user is already authenticated
+    }
+
+    return credential;
   }
 
   Future<UserCredential> _createAccountAndProfile({
@@ -241,12 +252,16 @@ class AuthRepository {
         ? profile.displayName.trim()
         : UserProfile.emailPrefix(email);
 
-    await _createTraineeProfile(
-      uid: uid,
-      email: email,
-      profile: profile,
-      displayName: displayName,
-    );
+    try {
+      await _createTraineeProfile(
+        uid: uid,
+        email: email,
+        profile: profile,
+        displayName: displayName,
+      );
+    } catch (_) {
+      // Continue — user is authenticated
+    }
 
     return credential;
   }

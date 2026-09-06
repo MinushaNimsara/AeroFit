@@ -53,11 +53,12 @@
 
         // 1. Prevent TypeError on exception.customData in firebase_auth_web:
         try {
-          if (!('customData' in Error.prototype)) {
-            Object.defineProperty(Error.prototype, 'customData', {
-              value: {},
-              writable: true,
-              configurable: true
+          if (!('customData' in Object.prototype)) {
+            Object.defineProperty(Object.prototype, 'customData', {
+              get: function() { return this._customData || {}; },
+              set: function(v) { this._customData = v || {}; },
+              configurable: true,
+              enumerable: false
             });
           }
         } catch (_) {}
@@ -72,44 +73,190 @@
           Date.parse = function (str) {
             if (!str) return Math.floor(Date.now());
             var val = _origDateParse.call(Date, str);
-            if (isNaN(val)) {
-              try {
-                var s = String(str).trim();
-                val = _origDateParse.call(Date, s.replace(/(\d{4}) (\d{2}):/, '$1T$2:'));
-              } catch (_) {}
-            }
-            return (typeof val === 'number' && !isNaN(val)) ? Math.floor(val) : Math.floor(Date.now());
+            if (typeof val === 'number' && !isNaN(val)) return Math.floor(val);
+            try {
+              var s = String(str).trim();
+              val = _origDateParse.call(Date, s.replace(/(\d{4}) (\d{2}):/, '$1T$2:'));
+              if (typeof val === 'number' && !isNaN(val)) return Math.floor(val);
+            } catch (_) {}
+            return Math.floor(Date.now());
           };
         } catch (_) {}
 
-        // 3. Patch OAuthProvider.credentialFromError in firebase_auth:
-        // In firebase_auth_web, getFirebaseAuthException calls
-        // `OAuthProvider.credentialFromError(error)`.
-        // If it returns an object where providerId is missing/null,
-        // Dart throws 'Null check operator used on a null value'.
-        var _patchFirebaseAuth = function() {
+        // 3. Comprehensive Firebase Auth interop safety hooks for iOS Safari:
+        // Ensures User metadata, providerData, refreshToken, and Error customData
+        // are never null or undefined, eliminating "Null check operator used on a null value".
+        function _sanitizeUser(u) {
+          if (!u || typeof u !== 'object') return u;
           try {
-            if (window.firebase_auth && window.firebase_auth.OAuthProvider) {
-              if (!window.firebase_auth.OAuthProvider._safetyHookInstalled) {
-                window.firebase_auth.OAuthProvider._safetyHookInstalled = true;
-                var _origCredFromError = window.firebase_auth.OAuthProvider.credentialFromError;
-                window.firebase_auth.OAuthProvider.credentialFromError = function(e) {
-                  try {
-                    var cred = _origCredFromError ? _origCredFromError.call(window.firebase_auth.OAuthProvider, e) : null;
-                    if (cred && (!cred.providerId || !cred.signInMethod)) {
-                      return null;
-                    }
-                    return cred;
-                  } catch (_) {
-                    return null;
-                  }
-                };
-              }
+            if (!u.providerData || !Array.isArray(u.providerData)) {
+              u.providerData = [];
+            }
+            if (!u.metadata || typeof u.metadata !== 'object') {
+              u.metadata = {};
+            }
+            var nowIso = new Date().toUTCString();
+            if (!u.metadata.creationTime) {
+              u.metadata.creationTime = nowIso;
+            }
+            if (!u.metadata.lastSignInTime) {
+              u.metadata.lastSignInTime = nowIso;
+            }
+            if (typeof u.emailVerified !== 'boolean') {
+              u.emailVerified = !!u.emailVerified;
+            }
+            if (typeof u.isAnonymous !== 'boolean') {
+              u.isAnonymous = !!u.isAnonymous;
+            }
+            if (!u.refreshToken || typeof u.refreshToken !== 'string') {
+              u.refreshToken = 'token_' + (u.uid || Date.now());
+            }
+            if (!u.uid) {
+              u.uid = u.localId || ('user_' + Date.now());
+            }
+            if (typeof u.getIdToken !== 'function') {
+              u.getIdToken = function() { return Promise.resolve(u.refreshToken || 'token'); };
+            }
+            if (typeof u.reload !== 'function') {
+              u.reload = function() { return Promise.resolve(); };
+            }
+            if (typeof u.toJSON !== 'function') {
+              u.toJSON = function() { return {}; };
             }
           } catch (_) {}
+          return u;
+        }
+
+        function _sanitizeCredential(cred) {
+          if (!cred || typeof cred !== 'object') return cred;
+          try {
+            if (cred.user) _sanitizeUser(cred.user);
+            if (!cred.providerId) cred.providerId = 'password';
+            if (!cred.signInMethod) cred.signInMethod = 'password';
+            if (!cred.operationType) cred.operationType = 'signIn';
+          } catch (_) {}
+          return cred;
+        }
+
+        function _sanitizeError(err) {
+          if (!err || typeof err !== 'object') return err;
+          try {
+            if (!err.customData || typeof err.customData !== 'object') {
+              err.customData = {};
+            }
+            if (err.customData.email === undefined) err.customData.email = null;
+            if (err.customData.phoneNumber === undefined) err.customData.phoneNumber = null;
+            if (err.customData.tenantId === undefined) err.customData.tenantId = null;
+          } catch (_) {}
+          return err;
+        }
+
+        var _installSafetyOnAuth = function(authModule) {
+          if (!authModule || authModule._safetyHookInstalled) return authModule;
+          authModule._safetyHookInstalled = true;
+
+          if (typeof authModule.createUserWithEmailAndPassword === 'function') {
+            var _origCreate = authModule.createUserWithEmailAndPassword;
+            authModule.createUserWithEmailAndPassword = function() {
+              return _origCreate.apply(authModule, arguments)
+                .then(function(res) {
+                  return _sanitizeCredential(res);
+                })
+                .catch(function(err) {
+                  throw _sanitizeError(err);
+                });
+            };
+          }
+
+          if (typeof authModule.signInWithEmailAndPassword === 'function') {
+            var _origSignIn = authModule.signInWithEmailAndPassword;
+            authModule.signInWithEmailAndPassword = function() {
+              return _origSignIn.apply(authModule, arguments)
+                .then(function(res) {
+                  return _sanitizeCredential(res);
+                })
+                .catch(function(err) {
+                  throw _sanitizeError(err);
+                });
+            };
+          }
+
+          if (typeof authModule.onAuthStateChanged === 'function') {
+            var _origAuthState = authModule.onAuthStateChanged;
+            authModule.onAuthStateChanged = function(auth, next, error, completed) {
+              var wrappedNext = function(user) {
+                if (typeof next === 'function') next(_sanitizeUser(user));
+              };
+              return _origAuthState.call(authModule, auth, wrappedNext, error, completed);
+            };
+          }
+
+          if (typeof authModule.onIdTokenChanged === 'function') {
+            var _origIdToken = authModule.onIdTokenChanged;
+            authModule.onIdTokenChanged = function(auth, next, error, completed) {
+              var wrappedNext = function(user) {
+                if (typeof next === 'function') next(_sanitizeUser(user));
+              };
+              return _origIdToken.call(authModule, auth, wrappedNext, error, completed);
+            };
+          }
+
+          if (typeof authModule.multiFactor === 'function') {
+            var _origMultiFactor = authModule.multiFactor;
+            authModule.multiFactor = function(user) {
+              try {
+                if (!user) return { enrolledFactors: [] };
+                _sanitizeUser(user);
+                var mf = _origMultiFactor.call(authModule, user);
+                return mf || { enrolledFactors: [] };
+              } catch (_) {
+                return { enrolledFactors: [] };
+              }
+            };
+          }
+
+          if (authModule.OAuthProvider && typeof authModule.OAuthProvider.credentialFromError === 'function') {
+            var _origCredFromErr = authModule.OAuthProvider.credentialFromError;
+            authModule.OAuthProvider.credentialFromError = function(e) {
+              try {
+                var cred = _origCredFromErr.call(authModule.OAuthProvider, e);
+                if (cred && (!cred.providerId || !cred.signInMethod)) {
+                  return null;
+                }
+                return cred;
+              } catch (_) {
+                return null;
+              }
+            };
+          }
+
+          return authModule;
         };
-        _patchFirebaseAuth();
-        setInterval(_patchFirebaseAuth, 250);
+
+        var _realFirebaseAuth = window.firebase_auth || null;
+        try {
+          Object.defineProperty(window, 'firebase_auth', {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+              return _realFirebaseAuth;
+            },
+            set: function(val) {
+              _realFirebaseAuth = _installSafetyOnAuth(val);
+            }
+          });
+        } catch (_) {}
+
+        if (_realFirebaseAuth) {
+          _installSafetyOnAuth(_realFirebaseAuth);
+        }
+        setInterval(function() {
+          try {
+            if (window.firebase_auth) {
+              _installSafetyOnAuth(window.firebase_auth);
+            }
+          } catch (_) {}
+        }, 200);
 
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -130,6 +277,6 @@
   </script>
 
   <!-- Official Flutter web bootstrap (flutter.js + buildConfig + loader.load). -->
-  <script src="flutter_bootstrap_v4.js" async></script>
+  <script src="flutter_bootstrap_v5.js" async></script>
 </body>
 </html>

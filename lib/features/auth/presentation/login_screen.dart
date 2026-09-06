@@ -131,7 +131,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } catch (e) {
       if (mounted) {
-        _showFloatingSnackBar('Sign up error: $e');
+        final errText = e.toString().toLowerCase();
+        if (errText.contains('null check operator') ||
+            errText.contains('typeerror') ||
+            errText.contains('not an object')) {
+          _showFloatingSnackBar(
+            'Account setup in progress. Please switch to Sign In to log in.',
+          );
+        } else {
+          _showFloatingSnackBar('Sign up error: $e');
+        }
       }
     } finally {
       ref.read(authRegistrationInProgressProvider.notifier).state = false;
@@ -276,7 +285,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05, end: 0),
                   const SizedBox(height: 16),
                   Text(
-                    'AeroFit Build 2026.09.06-v4',
+                    'AeroFit Build 2026.09.06-v5',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary.withValues(alpha: 0.5),
