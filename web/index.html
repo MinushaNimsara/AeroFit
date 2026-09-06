@@ -125,22 +125,18 @@
           };
         } catch (_) {}
 
-        // 4. Bulletproof safety patches for window.firebase_auth:
-        function _installSafetyOnAuth(authModule) {
-          if (!authModule || authModule._patchedSafety) return authModule;
-          authModule._patchedSafety = true;
+        // 4. Bulletproof Proxy safety patches for window.firebase_auth:
+        // Firebase Auth is loaded via dynamic ES module import(), which produces
+        // an immutable module namespace. Direct property assignment fails on sealed modules.
+        // A JavaScript Proxy intercepts 'get' access transparently.
+        function _createAuthProxy(rawModule) {
+          if (!rawModule || rawModule._isAuthProxy) return rawModule;
 
-          // A. getAdditionalUserInfo: In firebase_auth_web, convertWebAdditionalUserInfo calls
-          // getAdditionalUserInfo(userCredential). For email/password auth, this returns null.
-          // Dart2js inlines `s = a.a; r = s.isNewUser;` without a null check on `s`, throwing
-          // TypeError: null is not an object ('Null check operator used on a null value').
-          // Returning a safe fallback object completely fixes this crash.
-          var origGetAddInfo = authModule.getAdditionalUserInfo;
-          authModule.getAdditionalUserInfo = function(cred) {
+          var safeGetAdditionalUserInfo = function(cred) {
             var res = null;
             try {
-              if (typeof origGetAddInfo === 'function') {
-                res = origGetAddInfo.call(authModule, cred);
+              if (typeof rawModule.getAdditionalUserInfo === 'function') {
+                res = rawModule.getAdditionalUserInfo(cred);
               }
             } catch (_) {}
             if (!res || typeof res !== 'object') {
@@ -154,62 +150,87 @@
             return res;
           };
 
-          // B. OAuthProvider credentialFromResult & credentialFromError:
-          // In firebase_auth_web, convertWebOAuthCredential calls
-          // OAuthProvider.credentialFromResult(userCredential.jsObject).
-          // If this returns an object without providerId/signInMethod (email/password auth),
-          // Dart throws 'Null check operator used on a null value'.
-          // Returning null indicates no OAuth credential (expected for email/password).
-          if (authModule.OAuthProvider) {
-            var origCredFromResult = authModule.OAuthProvider.credentialFromResult;
-            if (typeof origCredFromResult === 'function') {
-              authModule.OAuthProvider.credentialFromResult = function(res) {
-                try {
-                  var cred = origCredFromResult.call(authModule.OAuthProvider, res);
-                  if (cred && (!cred.providerId || !cred.signInMethod)) {
-                    return null;
-                  }
-                  return cred;
-                } catch (_) {
-                  return null;
+          var safeOAuthProvider = null;
+          if (rawModule.OAuthProvider) {
+            safeOAuthProvider = new Proxy(rawModule.OAuthProvider, {
+              get: function(target, prop, receiver) {
+                if (prop === 'credentialFromResult') {
+                  return function(res) {
+                    try {
+                      var cred = target.credentialFromResult(res);
+                      if (cred && (!cred.providerId || !cred.signInMethod)) return null;
+                      return cred;
+                    } catch (_) {
+                      return null;
+                    }
+                  };
                 }
-              };
-            }
-            var origCredFromError = authModule.OAuthProvider.credentialFromError;
-            if (typeof origCredFromError === 'function') {
-              authModule.OAuthProvider.credentialFromError = function(err) {
-                try {
-                  var cred = origCredFromError.call(authModule.OAuthProvider, err);
-                  if (cred && (!cred.providerId || !cred.signInMethod)) {
-                    return null;
-                  }
-                  return cred;
-                } catch (_) {
-                  return null;
+                if (prop === 'credentialFromError') {
+                  return function(err) {
+                    try {
+                      var cred = target.credentialFromError(err);
+                      if (cred && (!cred.providerId || !cred.signInMethod)) return null;
+                      return cred;
+                    } catch (_) {
+                      return null;
+                    }
+                  };
                 }
-              };
-            }
+                var val = Reflect.get(target, prop, receiver);
+                if (typeof val === 'function') return val.bind(target);
+                return val;
+              }
+            });
           }
 
-          // C. multiFactor: Ensure multiFactor(user) never returns null or throws.
-          if (typeof authModule.multiFactor === 'function') {
-            var origMultiFactor = authModule.multiFactor;
-            authModule.multiFactor = function(user) {
-              try {
-                var res = origMultiFactor.call(authModule, user);
+          var safeMultiFactor = function(user) {
+            try {
+              if (typeof rawModule.multiFactor === 'function') {
+                var res = rawModule.multiFactor(user);
                 if (res && typeof res === 'object') return res;
-              } catch (_) {}
-              return {
-                enrolledFactors: [],
-                getSession: function() { return Promise.resolve({}); }
-              };
+              }
+            } catch (_) {}
+            return {
+              enrolledFactors: [],
+              getSession: function() { return Promise.resolve({}); }
             };
-          }
+          };
 
-          return authModule;
+          return new Proxy(rawModule, {
+            get: function(target, prop, receiver) {
+              if (prop === '_isAuthProxy') return true;
+              if (prop === 'getAdditionalUserInfo') return safeGetAdditionalUserInfo;
+              if (prop === 'OAuthProvider' && safeOAuthProvider) return safeOAuthProvider;
+              if (prop === 'multiFactor') return safeMultiFactor;
+              var val = Reflect.get(target, prop, receiver);
+              if (typeof val === 'function') return val.bind(target);
+              return val;
+            }
+          });
         }
 
-        var _realFirebaseAuth = window.firebase_auth || null;
+        // Intercept window.ff_trigger_firebase_auth from firebase_core_web:
+        var _rawTriggerAuth = null;
+        try {
+          Object.defineProperty(window, 'ff_trigger_firebase_auth', {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+              return _rawTriggerAuth;
+            },
+            set: function(fn) {
+              _rawTriggerAuth = function(callback) {
+                return fn(function(rawModule) {
+                  var proxied = _createAuthProxy(rawModule);
+                  return callback(proxied);
+                });
+              };
+            }
+          });
+        } catch (_) {}
+
+        // Intercept window.firebase_auth setter/getter:
+        var _realFirebaseAuth = window.firebase_auth ? _createAuthProxy(window.firebase_auth) : null;
         try {
           Object.defineProperty(window, 'firebase_auth', {
             configurable: true,
@@ -218,21 +239,21 @@
               return _realFirebaseAuth;
             },
             set: function(val) {
-              _realFirebaseAuth = _installSafetyOnAuth(val);
+              _realFirebaseAuth = _createAuthProxy(val);
             }
           });
         } catch (_) {}
 
         if (_realFirebaseAuth) {
-          _installSafetyOnAuth(_realFirebaseAuth);
+          _realFirebaseAuth = _createAuthProxy(_realFirebaseAuth);
         }
         setInterval(function() {
           try {
-            if (window.firebase_auth && !window.firebase_auth._patchedSafety) {
-              _installSafetyOnAuth(window.firebase_auth);
+            if (window.firebase_auth && !window.firebase_auth._isAuthProxy) {
+              _realFirebaseAuth = _createAuthProxy(window.firebase_auth);
             }
           } catch (_) {}
-        }, 50);
+        }, 20);
 
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (regs) {
@@ -253,6 +274,6 @@
   </script>
 
   <!-- Official Flutter web bootstrap (flutter.js + buildConfig + loader.load). -->
-  <script src="flutter_bootstrap_v7.js" async></script>
+  <script src="flutter_bootstrap_v8.js" async></script>
 </body>
 </html>

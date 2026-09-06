@@ -108,6 +108,27 @@ class AuthRepository {
         return recovered;
       }
 
+      final current = _auth.currentUser;
+      if (current != null && current.uid.isNotEmpty) {
+        final displayName = profile.displayName.trim().isNotEmpty
+            ? profile.displayName.trim()
+            : UserProfile.emailPrefix(normalizedEmail);
+        try {
+          await _createTraineeProfile(
+            uid: current.uid,
+            email: normalizedEmail,
+            profile: profile,
+            displayName: displayName,
+          );
+        } catch (_) {}
+        try {
+          return await _auth.signInWithEmailAndPassword(
+            email: normalizedEmail,
+            password: normalizedPassword,
+          );
+        } catch (_) {}
+      }
+
       // If not yet created, execute the fallback via Firebase Auth Identity Toolkit REST API.
       try {
         return await _signUpViaRestFallback(
@@ -118,6 +139,14 @@ class AuthRepository {
       } on FirebaseAuthException {
         rethrow;
       } catch (restErr) {
+        if (_auth.currentUser != null) {
+          try {
+            return await _auth.signInWithEmailAndPassword(
+              email: normalizedEmail,
+              password: normalizedPassword,
+            );
+          } catch (_) {}
+        }
         throw FirebaseAuthException(
           code: 'registration-failed',
           message: 'Registration could not be completed: $e',
@@ -202,12 +231,17 @@ class AuthRepository {
         : UserProfile.emailPrefix(email);
 
     // 1. Sign in to establish active session first (required by Firestore rules)
-    final credential = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    UserCredential? credential;
+    try {
+      credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } catch (_) {
+      // Continue if session is already active or interop failure occurs
+    }
 
-    final resolvedUid = credential.user?.uid ?? uid;
+    final resolvedUid = credential?.user?.uid ?? _auth.currentUser?.uid ?? uid;
 
     // 2. Then write trainee profile to Firestore
     try {
@@ -221,7 +255,14 @@ class AuthRepository {
       // Continue — user is already authenticated
     }
 
-    return credential;
+    if (credential != null) {
+      return credential;
+    }
+
+    return await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
   Future<UserCredential> _createAccountAndProfile({
@@ -229,10 +270,37 @@ class AuthRepository {
     required String password,
     required SignUpProfile profile,
   }) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    UserCredential? credential;
+    try {
+      credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } catch (createErr) {
+      final current = _auth.currentUser;
+      if (current != null && current.uid.isNotEmpty) {
+        final displayName = profile.displayName.trim().isNotEmpty
+            ? profile.displayName.trim()
+            : UserProfile.emailPrefix(email);
+
+        try {
+          await _createTraineeProfile(
+            uid: current.uid,
+            email: email,
+            profile: profile,
+            displayName: displayName,
+          );
+        } catch (_) {}
+
+        try {
+          return await _auth.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+        } catch (_) {}
+      }
+      rethrow;
+    }
 
     String? uid;
     try {

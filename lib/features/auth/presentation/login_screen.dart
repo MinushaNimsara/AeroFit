@@ -78,6 +78,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         password: _signInPassword.text,
       );
     } on FirebaseAuthException catch (e) {
+      if (FirebaseAuth.instance.currentUser != null) {
+        return;
+      }
       final msg = switch (e.code) {
         'user-not-found' => 'No account found with this email.',
         'wrong-password' => 'Incorrect password.',
@@ -93,6 +96,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } catch (e, stack) {
       debugPrint('Sign in error: $e\n$stack');
+      if (FirebaseAuth.instance.currentUser != null) {
+        return;
+      }
       if (mounted) {
         final msg = 'Sign in failed: $e';
         setState(() => _errorMessage = msg);
@@ -135,6 +141,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         profile: profile,
       );
     } on FirebaseAuthException catch (e) {
+      if (FirebaseAuth.instance.currentUser != null) {
+        return;
+      }
       final message = switch (e.code) {
         'email-already-in-use' =>
           'This email is already registered. Switch to Sign In and log in instead.',
@@ -148,6 +157,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } catch (e, stack) {
       debugPrint('Sign up error: $e\n$stack');
+      if (FirebaseAuth.instance.currentUser != null) {
+        return;
+      }
       if (mounted) {
         _showFloatingSnackBar('Sign up error: $e');
       }
@@ -294,7 +306,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05, end: 0),
                   const SizedBox(height: 16),
                   Text(
-                    'AeroFit Build 2026.09.06-v7',
+                    'AeroFit Build 2026.09.06-v8',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary.withValues(alpha: 0.5),
