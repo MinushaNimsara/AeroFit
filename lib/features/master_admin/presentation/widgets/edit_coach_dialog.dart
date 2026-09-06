@@ -45,7 +45,8 @@ class _EditCoachDialogState extends ConsumerState<_EditCoachDialog> {
   }
 
   Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
 
     await ref.read(coachEditProvider.notifier).saveCoachProfile(
           coachUid: widget.entry.uid,

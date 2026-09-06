@@ -85,7 +85,8 @@ class _CreateRoutineDialogState extends ConsumerState<CreateRoutineDialog> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
     if (_selected.isEmpty) {
       setState(() => _exercisesError = 'Add at least one exercise');
       return;

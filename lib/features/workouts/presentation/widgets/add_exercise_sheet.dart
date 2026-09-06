@@ -79,7 +79,8 @@ class _AddExerciseSheetState extends ConsumerState<AddExerciseSheet> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
 
     final uid = ref.read(authStateProvider).value?.uid;
     final exercisesRepo = ref.read(exercisesRepositoryProvider);

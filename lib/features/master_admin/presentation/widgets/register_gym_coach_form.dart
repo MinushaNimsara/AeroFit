@@ -28,7 +28,8 @@ class _RegisterGymCoachFormState extends ConsumerState<RegisterGymCoachForm> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
 
     await ref.read(coachRegistrationProvider.notifier).registerGymAndCoach(
           gymName: _gymName.text,

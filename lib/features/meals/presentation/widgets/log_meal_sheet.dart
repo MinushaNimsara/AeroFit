@@ -129,7 +129,8 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
   }
 
   Future<void> _saveMeal() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
 
     final uid = ref.read(authStateProvider).value?.uid;
     final repo = ref.read(mealsRepositoryProvider);

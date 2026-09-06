@@ -56,7 +56,8 @@ class _SetTraineeCaloriesDialogState
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _saving) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate() || _saving) return;
 
     setState(() => _saving = true);
     try {

@@ -43,7 +43,8 @@ class _ReportIssueDialogState extends State<_ReportIssueDialog> {
   }
 
   Future<void> _send() async {
-    if (!_formKey.currentState!.validate()) return;
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
 
     setState(() => _isSending = true);
     try {
