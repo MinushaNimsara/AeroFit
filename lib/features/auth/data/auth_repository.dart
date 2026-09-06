@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:aerofit/features/auth/domain/activity_level.dart';
 import 'package:aerofit/features/auth/domain/calorie_calculator.dart';
 import 'package:aerofit/features/auth/domain/sign_up_profile.dart';
 import 'package:aerofit/features/auth/domain/user_profile.dart';
 import 'package:aerofit/features/auth/domain/user_role.dart';
+import 'package:aerofit/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 /// Email/password auth backed by the manually configured Firebase Web app.
 class AuthRepository {
@@ -94,28 +97,117 @@ class AuthRepository {
       }
       rethrow;
     } catch (e) {
-      final recovered = await _tryRecoverPartialRegistration(
-        email: normalizedEmail,
-        password: normalizedPassword,
-        profile: profile,
-      );
-      if (recovered != null) {
-        return recovered;
+      // If client-side FlutterFire/Safari throws (e.g. Null check operator, TypeError, etc.),
+      // execute the fallback via Firebase Auth Identity Toolkit REST API.
+      try {
+        return await _signUpViaRestFallback(
+          email: normalizedEmail,
+          password: normalizedPassword,
+          profile: profile,
+        );
+      } on FirebaseAuthException {
+        rethrow;
+      } catch (restErr) {
+        final recovered = await _tryRecoverPartialRegistration(
+          email: normalizedEmail,
+          password: normalizedPassword,
+          profile: profile,
+        );
+        if (recovered != null) {
+          return recovered;
+        }
+        throw Exception('Could not create your account: $restErr');
       }
+    }
+  }
 
-      final errLower = e.toString().toLowerCase();
-      if (errLower.contains('null check operator') ||
-          errLower.contains('typeerror') ||
-          errLower.contains('not an object')) {
-        // On iOS Safari, firebase_auth_web can crash converting Firebase Auth error responses.
+  Future<UserCredential> _signUpViaRestFallback({
+    required String email,
+    required String password,
+    required SignUpProfile profile,
+  }) async {
+    final apiKey = DefaultFirebaseOptions.web.apiKey;
+    final url = Uri.parse(
+      'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey',
+    );
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'returnSecureToken': true,
+      }),
+    );
+
+    final Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw Exception('Server returned an unexpected response. Please try again.');
+    }
+
+    if (response.statusCode != 200) {
+      final errorMap = body['error'] as Map<String, dynamic>?;
+      final rawMsg = errorMap?['message'] as String? ?? 'REGISTRATION_FAILED';
+
+      if (rawMsg.startsWith('EMAIL_EXISTS')) {
+        final recovered = await _tryRecoverPartialRegistration(
+          email: email,
+          password: password,
+          profile: profile,
+        );
+        if (recovered != null) return recovered;
+        throw FirebaseAuthException(
+          code: 'email-already-in-use',
+          message:
+              'This email is already registered. Switch to Sign In and log in instead.',
+        );
+      } else if (rawMsg.startsWith('WEAK_PASSWORD')) {
+        throw FirebaseAuthException(
+          code: 'weak-password',
+          message: 'Password is too weak. Please use at least 6 characters.',
+        );
+      } else if (rawMsg.startsWith('INVALID_EMAIL')) {
+        throw FirebaseAuthException(
+          code: 'invalid-email',
+          message: 'Please enter a valid email address.',
+        );
+      } else if (rawMsg.startsWith('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+        throw FirebaseAuthException(
+          code: 'too-many-requests',
+          message: 'Too many attempts. Please try again later.',
+        );
+      } else {
         throw FirebaseAuthException(
           code: 'registration-failed',
-          message:
-              'This email may already be in use. Switch to Sign In to log in.',
+          message: 'Registration failed: $rawMsg',
         );
       }
-      throw Exception('Could not create your account: $e');
     }
+
+    final uid = body['localId'] as String?;
+    if (uid == null || uid.isEmpty) {
+      throw Exception('Account was created but no user session was returned.');
+    }
+
+    final displayName = profile.displayName.trim().isNotEmpty
+        ? profile.displayName.trim()
+        : UserProfile.emailPrefix(email);
+
+    await _createTraineeProfile(
+      uid: uid,
+      email: email,
+      profile: profile,
+      displayName: displayName,
+    );
+
+    // Sign in to establish Flutter FirebaseAuth active session
+    return await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
   Future<UserCredential> _createAccountAndProfile({

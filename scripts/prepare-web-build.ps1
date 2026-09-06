@@ -108,27 +108,33 @@ $stdBootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', "`"ma
 Set-Content -Path $bootstrapPath -Value $stdBootstrap -NoNewline
 
 # Generate completely new versioned filenames to 100% bypass all Vercel/Safari caches
-$v3Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v3.dart.js"'
-$bootstrapV3Path = Join-Path $root "web\flutter_bootstrap_v3.js"
-Set-Content -Path $bootstrapV3Path -Value $v3Bootstrap -NoNewline
+$v4Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v4.dart.js"'
+$bootstrapV4Path = Join-Path $root "web\flutter_bootstrap_v4.js"
+Set-Content -Path $bootstrapV4Path -Value $v4Bootstrap -NoNewline
 
 $mainJs = Get-Item "web\main.dart.js"
+$mainV4Path = Join-Path $root "web\main_v4.dart.js"
+Copy-Item -Path $mainJs.FullName -Destination $mainV4Path -Force
+
+# Also update v3 and v2 files so any cached index.html works with updated code
+$v3Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v4.dart.js"'
+$bootstrapV3Path = Join-Path $root "web\flutter_bootstrap_v3.js"
+Set-Content -Path $bootstrapV3Path -Value $v3Bootstrap -NoNewline
 $mainV3Path = Join-Path $root "web\main_v3.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV3Path -Force
 
-# Also update v2 files so any cached index.html works with updated code
-$v2Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v3.dart.js"'
+$v2Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v4.dart.js"'
 $bootstrapV2Path = Join-Path $root "web\flutter_bootstrap_v2.js"
 Set-Content -Path $bootstrapV2Path -Value $v2Bootstrap -NoNewline
 $mainV2Path = Join-Path $root "web\main_v2.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV2Path -Force
 
-# Point index.html to flutter_bootstrap_v3.js
+# Point index.html to flutter_bootstrap_v4.js
 $indexContent = Get-Content $indexPath -Raw
-$indexContent = $indexContent -replace 'src="flutter_bootstrap[^"]*"', 'src="flutter_bootstrap_v3.js"'
+$indexContent = $indexContent -replace 'src="flutter_bootstrap[^"]*"', 'src="flutter_bootstrap_v4.js"'
 Set-Content -Path $indexPath -Value $indexContent -NoNewline
 
 # ALSO sync to build/web because Vercel project has Root Directory = build/web
 Copy-Item -Path "web\*" -Destination "build\web\" -Recurse -Force
 
-Write-Host "Web build ready in web/ and build/web/ (main.dart.js: $($mainJs.Length) bytes, created main_v3.dart.js & flutter_bootstrap_v3.js)"
+Write-Host "Web build ready in web/ and build/web/ (main.dart.js: $($mainJs.Length) bytes, created main_v4.dart.js & flutter_bootstrap_v4.js)"

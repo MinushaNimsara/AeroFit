@@ -123,23 +123,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           'This email is already registered. Switch to Sign In and log in instead.',
         'weak-password' => 'Password is too weak. Use at least 6 characters.',
         'invalid-email' => 'Enter a valid email address.',
+        'too-many-requests' => 'Too many attempts. Please try again later.',
         _ => e.message ?? 'Sign up failed (${e.code}).',
       };
       if (mounted) {
-        _showErrorSnackBar(message);
+        _showFloatingSnackBar(message);
       }
     } catch (e) {
       if (mounted) {
-        final errText = e.toString().toLowerCase();
-        if (errText.contains('null check operator') ||
-            errText.contains('typeerror') ||
-            errText.contains('not an object')) {
-          _showErrorSnackBar(
-            'This email may already be registered. Switch to Sign In and log in instead.',
-          );
-        } else {
-          _showErrorSnackBar('Sign up error: $e');
-        }
+        _showFloatingSnackBar('Sign up error: $e');
       }
     } finally {
       ref.read(authRegistrationInProgressProvider.notifier).state = false;
@@ -147,10 +139,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
   }
 
-  void _showErrorSnackBar(String message) {
+  void _showFloatingSnackBar(String message) {
     if (!mounted) return;
-    setState(() => _errorMessage = message);
-
     final messenger = _scaffoldMessengerKey.currentState;
     if (messenger == null) return;
 
@@ -164,6 +154,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           duration: const Duration(seconds: 6),
         ),
       );
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    setState(() => _errorMessage = message);
+    _showFloatingSnackBar(message);
   }
 
   @override
@@ -235,7 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             ],
                           ),
                           const SizedBox(height: 12),
-                          if (_errorMessage != null) ...[
+                          if (_errorMessage != null && _tabController.index == 0) ...[
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
@@ -280,7 +276,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05, end: 0),
                   const SizedBox(height: 16),
                   Text(
-                    'AeroFit Build 2026.09.06-v3',
+                    'AeroFit Build 2026.09.06-v4',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary.withValues(alpha: 0.5),
@@ -584,16 +580,7 @@ class _SignUpFormState extends State<_SignUpForm> {
         password,
       );
     } catch (e) {
-      final errText = e.toString().toLowerCase();
-      if (errText.contains('null check operator') ||
-          errText.contains('typeerror') ||
-          errText.contains('not an object')) {
-        _showSnackBar(
-          'This email may already be registered. Switch to Sign In and log in instead.',
-        );
-      } else {
-        _showSnackBar('Registration error: $e');
-      }
+      _showSnackBar('Registration error: $e');
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
