@@ -65,7 +65,7 @@ class AuthRepository {
     return credential;
   }
 
-  Future<UserCredential> signUp({
+  Future<UserCredential?> signUp({
     required String email,
     required String password,
     required SignUpProfile profile,
@@ -108,26 +108,29 @@ class AuthRepository {
         return recovered;
       }
 
-      final current = _auth.currentUser;
-      if (current != null && current.uid.isNotEmpty) {
-        final displayName = profile.displayName.trim().isNotEmpty
-            ? profile.displayName.trim()
-            : UserProfile.emailPrefix(normalizedEmail);
-        try {
-          await _createTraineeProfile(
-            uid: current.uid,
-            email: normalizedEmail,
-            profile: profile,
-            displayName: displayName,
-          );
-        } catch (_) {}
-        try {
-          return await _auth.signInWithEmailAndPassword(
-            email: normalizedEmail,
-            password: normalizedPassword,
-          );
-        } catch (_) {}
-      }
+      try {
+        final current = _auth.currentUser;
+        if (current != null && current.uid.isNotEmpty) {
+          final displayName = profile.displayName.trim().isNotEmpty
+              ? profile.displayName.trim()
+              : UserProfile.emailPrefix(normalizedEmail);
+          try {
+            await _createTraineeProfile(
+              uid: current.uid,
+              email: normalizedEmail,
+              profile: profile,
+              displayName: displayName,
+            );
+          } catch (_) {}
+          try {
+            return await _auth.signInWithEmailAndPassword(
+              email: normalizedEmail,
+              password: normalizedPassword,
+            );
+          } catch (_) {}
+          return null;
+        }
+      } catch (_) {}
 
       // If not yet created, execute the fallback via Firebase Auth Identity Toolkit REST API.
       try {
@@ -139,14 +142,17 @@ class AuthRepository {
       } on FirebaseAuthException {
         rethrow;
       } catch (restErr) {
-        if (_auth.currentUser != null) {
-          try {
-            return await _auth.signInWithEmailAndPassword(
-              email: normalizedEmail,
-              password: normalizedPassword,
-            );
-          } catch (_) {}
-        }
+        try {
+          if (_auth.currentUser != null) {
+            try {
+              return await _auth.signInWithEmailAndPassword(
+                email: normalizedEmail,
+                password: normalizedPassword,
+              );
+            } catch (_) {}
+            return null;
+          }
+        } catch (_) {}
         throw FirebaseAuthException(
           code: 'registration-failed',
           message: 'Registration could not be completed: $e',
@@ -155,7 +161,7 @@ class AuthRepository {
     }
   }
 
-  Future<UserCredential> _signUpViaRestFallback({
+  Future<UserCredential?> _signUpViaRestFallback({
     required String email,
     required String password,
     required SignUpProfile profile,
@@ -259,13 +265,17 @@ class AuthRepository {
       return credential;
     }
 
-    return await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    try {
+      return await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } catch (_) {
+      return credential;
+    }
   }
 
-  Future<UserCredential> _createAccountAndProfile({
+  Future<UserCredential?> _createAccountAndProfile({
     required String email,
     required String password,
     required SignUpProfile profile,
@@ -298,6 +308,7 @@ class AuthRepository {
             password: password,
           );
         } catch (_) {}
+        return credential;
       }
       rethrow;
     }

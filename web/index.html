@@ -52,21 +52,21 @@
         });
 
         // 1. Prevent TypeError on exception.customData in firebase_auth_web:
+        // FirebaseError sets `this.customData = customData;` which is undefined for most errors.
+        // In Dart, `exception.customData` is declared as non-nullable JSAny, so Dart does `t.e.a(a.customData)`.
+        // If customData is undefined or null, Dart throws TypeError: type 'minified:IV' is not a subtype of type 'minified:c2'.
+        // Intercepting customData with a getter/setter ensures customData is ALWAYS a valid object {}.
         try {
-          if (!('customData' in Error.prototype)) {
-            Object.defineProperty(Error.prototype, 'customData', {
-              value: {},
-              writable: true,
-              configurable: true
+          var _defineSafeCustomData = function(proto) {
+            Object.defineProperty(proto, 'customData', {
+              get: function() { return this._safeCustomData || {}; },
+              set: function(v) { this._safeCustomData = v || {}; },
+              configurable: true,
+              enumerable: true
             });
-          }
-          if (!('customData' in Object.prototype)) {
-            Object.defineProperty(Object.prototype, 'customData', {
-              value: {},
-              writable: true,
-              configurable: true
-            });
-          }
+          };
+          _defineSafeCustomData(Error.prototype);
+          _defineSafeCustomData(Object.prototype);
         } catch (_) {}
 
         // 2. Fallbacks on Object.prototype for Safari/WebKit missing properties:
@@ -142,7 +142,7 @@
             if (!res || typeof res !== 'object') {
               res = {
                 isNewUser: false,
-                profile: {},
+                profile: null,
                 providerId: 'password',
                 username: null
               };
@@ -177,7 +177,6 @@
                   };
                 }
                 var val = Reflect.get(target, prop, receiver);
-                if (typeof val === 'function') return val.bind(target);
                 return val;
               }
             });
@@ -203,7 +202,6 @@
               if (prop === 'OAuthProvider' && safeOAuthProvider) return safeOAuthProvider;
               if (prop === 'multiFactor') return safeMultiFactor;
               var val = Reflect.get(target, prop, receiver);
-              if (typeof val === 'function') return val.bind(target);
               return val;
             }
           });
@@ -274,6 +272,6 @@
   </script>
 
   <!-- Official Flutter web bootstrap (flutter.js + buildConfig + loader.load). -->
-  <script src="flutter_bootstrap_v8.js" async></script>
+  <script src="flutter_bootstrap_v9.js" async></script>
 </body>
 </html>

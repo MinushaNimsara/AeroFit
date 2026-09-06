@@ -86,11 +86,32 @@ $mainJsRaw = [System.IO.File]::ReadAllText($mainJsPath, [System.Text.Encoding]::
 $mainJsRaw = $mainJsRaw -replace 'r=s\.isNewUser', 'r=s!=null?s.isNewUser:!1;if(s==null)s={profile:null,providerId:"password",username:null}'
 
 # 2. Null-safe check on l.providerId in bwD (convertWebOAuthCredential)
-$mainJsRaw = $mainJsRaw -replace 'if\(l==null\)return m(\s*s=l\.providerId)', 'if(l==null||l.providerId==null)return m$1'
+$mainJsRaw = $mainJsRaw -replace 'if\(l==null\)return m(\r?\n|\s*)s=l\.providerId', 'if(l==null||l.providerId==null)return m;$1s=l.providerId'
 
 # 3. Null-safe check on h.metadata in aFM (UserWeb constructor)
 $mainJsRaw = $mainJsRaw -replace 'if\(h\.metadata\.creationTime!=null\)', 'if(h.metadata&&h.metadata.creationTime!=null)'
 $mainJsRaw = $mainJsRaw -replace 'if\(h\.metadata\.lastSignInTime!=null\)', 'if(h.metadata&&h.metadata.lastSignInTime!=null)'
+
+# 4. CRITICAL: Null-safe check on g=e.a(a.customData) in beQ (getFirebaseAuthException).
+# In Dart, customData is declared as non-nullable JSAny, so dart2js emits e.a(a.customData).
+# When customData is undefined (default in FirebaseError on Safari), e.a throws:
+# TypeError: Instance of 'minified:IV': type 'minified:IV' is not a subtype of type 'minified:c2'.
+$mainJsRaw = $mainJsRaw -replace 'g=e\.a\(a\.customData\)', 'g=a&&a.customData!=null&&t.e.b(a.customData)?e.a(a.customData):{}'
+
+# 5. CRITICAL: Guard entry of beQ against non-c2 objects (e.g. minified:IV)
+# beQ begins with e=t.e\ne.a(a). If a is a Dart error (IV), e.a(a) throws the exact subtype error.
+$mainJsRaw = $mainJsRaw -replace '(\bbeQ\(a,b\)\{var s,[^;]+,e=t\.e\r?\n)e\.a\(a\)', '$1if(a==null||!t.e.b(a))return A.jl("unknown",f,f,A.o(a),f,f)'
+
+# 6. CRITICAL: Guard EB (guardAuthExceptions) against non-c2 error casts:
+# In EB catch(m): p=t.e.a(r). If r is a Dart error (minified:IV), t.e.a(r) throws.
+$mainJsRaw = $mainJsRaw -replace 'p=t\.e\.a\(r\)', 'p=t.e.b(r)?r:m'
+
+# 7. CRITICAL: Guard catchError callback in A.b_l:
+# $2(a,b){var s=A.beQ(a,this.a)
+$mainJsRaw = $mainJsRaw -replace '(\$2\(a,b\)\{)var s=A\.beQ\(a,this\.a\)', '$1var s=t.e.b(a)?A.beQ(a,this.a):A.jl("unknown",null,null,A.o(a),null,null)'
+
+# 8. Guard OAuthProvider.credentialFromError in beQ:
+$mainJsRaw = $mainJsRaw -replace 'if\(r!=null\)\{q=r\.providerId', 'if(r!=null&&r.providerId!=null){q=r.providerId'
 
 [System.IO.File]::WriteAllText($mainJsPath, $mainJsRaw, [System.Text.Encoding]::UTF8)
 Write-Host "Applied compiled JS patches to main.dart.js."
@@ -125,57 +146,63 @@ $stdBootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', "`"ma
 Set-Content -Path $bootstrapPath -Value $stdBootstrap -NoNewline
 
 # Generate completely new versioned filenames to 100% bypass all Vercel/Safari caches
-$v8Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v8.dart.js"'
-$bootstrapV8Path = Join-Path $root "web\flutter_bootstrap_v8.js"
-Set-Content -Path $bootstrapV8Path -Value $v8Bootstrap -NoNewline
+$v9Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
+$bootstrapV9Path = Join-Path $root "web\flutter_bootstrap_v9.js"
+Set-Content -Path $bootstrapV9Path -Value $v9Bootstrap -NoNewline
 
 $mainJs = Get-Item "web\main.dart.js"
+$mainV9Path = Join-Path $root "web\main_v9.dart.js"
+Copy-Item -Path $mainJs.FullName -Destination $mainV9Path -Force
+
+# Also update v8, v7, v6, v5, v4, v3, and v2 files so any cached index.html works with updated code
+$v8Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
+$bootstrapV8Path = Join-Path $root "web\flutter_bootstrap_v8.js"
+Set-Content -Path $bootstrapV8Path -Value $v8Bootstrap -NoNewline
 $mainV8Path = Join-Path $root "web\main_v8.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV8Path -Force
 
-# Also update v7, v6, v5, v4, v3, and v2 files so any cached index.html works with updated code
-$v7Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v8.dart.js"'
+$v7Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
 $bootstrapV7Path = Join-Path $root "web\flutter_bootstrap_v7.js"
 Set-Content -Path $bootstrapV7Path -Value $v7Bootstrap -NoNewline
 $mainV7Path = Join-Path $root "web\main_v7.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV7Path -Force
 
-$v6Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v8.dart.js"'
+$v6Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
 $bootstrapV6Path = Join-Path $root "web\flutter_bootstrap_v6.js"
 Set-Content -Path $bootstrapV6Path -Value $v6Bootstrap -NoNewline
 $mainV6Path = Join-Path $root "web\main_v6.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV6Path -Force
 
-$v5Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v8.dart.js"'
+$v5Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
 $bootstrapV5Path = Join-Path $root "web\flutter_bootstrap_v5.js"
 Set-Content -Path $bootstrapV5Path -Value $v5Bootstrap -NoNewline
 $mainV5Path = Join-Path $root "web\main_v5.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV5Path -Force
 
-$v4Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v8.dart.js"'
+$v4Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
 $bootstrapV4Path = Join-Path $root "web\flutter_bootstrap_v4.js"
 Set-Content -Path $bootstrapV4Path -Value $v4Bootstrap -NoNewline
 $mainV4Path = Join-Path $root "web\main_v4.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV4Path -Force
 
-$v3Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v8.dart.js"'
+$v3Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
 $bootstrapV3Path = Join-Path $root "web\flutter_bootstrap_v3.js"
 Set-Content -Path $bootstrapV3Path -Value $v3Bootstrap -NoNewline
 $mainV3Path = Join-Path $root "web\main_v3.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV3Path -Force
 
-$v2Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v8.dart.js"'
+$v2Bootstrap = $bootstrap -replace '"mainJsPath"\s*:\s*"main\.dart\.js"', '"mainJsPath":"main_v9.dart.js"'
 $bootstrapV2Path = Join-Path $root "web\flutter_bootstrap_v2.js"
 Set-Content -Path $bootstrapV2Path -Value $v2Bootstrap -NoNewline
 $mainV2Path = Join-Path $root "web\main_v2.dart.js"
 Copy-Item -Path $mainJs.FullName -Destination $mainV2Path -Force
 
-# Point index.html to flutter_bootstrap_v8.js
+# Point index.html to flutter_bootstrap_v9.js
 $indexContent = Get-Content $indexPath -Raw
-$indexContent = $indexContent -replace 'src="flutter_bootstrap[^"]*"', 'src="flutter_bootstrap_v8.js"'
+$indexContent = $indexContent -replace 'src="flutter_bootstrap[^"]*"', 'src="flutter_bootstrap_v9.js"'
 Set-Content -Path $indexPath -Value $indexContent -NoNewline
 
 # ALSO sync to build/web because Vercel project has Root Directory = build/web
 Copy-Item -Path "web\*" -Destination "build\web\" -Recurse -Force
 
-Write-Host "Web build ready in web/ and build/web/ (main.dart.js: $($mainJs.Length) bytes, created main_v8.dart.js & flutter_bootstrap_v8.js)"
+Write-Host "Web build ready in web/ and build/web/ (main.dart.js: $($mainJs.Length) bytes, created main_v9.dart.js & flutter_bootstrap_v9.js)"
