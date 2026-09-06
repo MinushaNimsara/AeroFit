@@ -121,4 +121,7 @@ $indexContent = Get-Content $indexPath -Raw
 $indexContent = $indexContent -replace 'src="flutter_bootstrap[^"]*"', 'src="flutter_bootstrap_v2.js"'
 Set-Content -Path $indexPath -Value $indexContent -NoNewline
 
-Write-Host "Web build ready in web/ (main.dart.js: $($mainJs.Length) bytes, created main_v2.dart.js & flutter_bootstrap_v2.js)"
+# ALSO sync to build/web because Vercel project has Root Directory = build/web
+Copy-Item -Path "web\*" -Destination "build\web\" -Recurse -Force
+
+Write-Host "Web build ready in web/ and build/web/ (main.dart.js: $($mainJs.Length) bytes, created main_v2.dart.js & flutter_bootstrap_v2.js)"
