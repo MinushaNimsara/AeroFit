@@ -1,13 +1,19 @@
-name: Deploy to Vercel
+# Vercel production deploys are handled by the GitHub ↔ Vercel project link
+# (minushanimsaras-projects/aero-fit-slul). This workflow only verifies the
+# committed Flutter web bundle so broken pushes are caught early.
+name: Verify web build
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,12 +23,5 @@ jobs:
         run: |
           test -f web/main.dart.js
           test -f web/index.html
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./
+          test -f vercel.json
+          echo "web/ bundle OK — Vercel Git integration will deploy on push to main"
