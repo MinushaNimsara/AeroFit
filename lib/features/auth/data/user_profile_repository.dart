@@ -46,17 +46,24 @@ class UserProfileRepository {
     if (payload.isEmpty) return;
 
     final docRef = db.collection('users').doc(uid);
-    final existing = await docRef.get();
-    final current = existing.data() ?? const <String, dynamic>{};
+    try {
+      final existing = await docRef.get().timeout(const Duration(seconds: 8));
+      final current = existing.data() ?? const <String, dynamic>{};
 
-    final needsWrite = payload.entries.any((entry) {
-      final currentValue = current[entry.key]?.toString().trim() ?? '';
-      return currentValue != entry.value.toString().trim();
-    });
+      final needsWrite = payload.entries.any((entry) {
+        final currentValue = current[entry.key]?.toString().trim() ?? '';
+        return currentValue != entry.value.toString().trim();
+      });
 
-    if (!needsWrite) return;
+      if (!needsWrite) return;
 
-    await docRef.set(payload, SetOptions(merge: true));
+      await docRef
+          .set(payload, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // Allow retry on next auth session when network recovers.
+      _identitySyncAttempted.remove(uid);
+    }
   }
 
   Stream<UserProfile?> watchProfile(String uid) {
@@ -66,6 +73,8 @@ class UserProfileRepository {
     return db.collection('users').doc(uid).snapshots().map((snap) {
       if (!snap.exists || snap.data() == null) return null;
       return UserProfile.fromFirestore(snap.id, snap.data()!);
+    }).handleError((_) {
+      // Offline / unreachable Firestore must not hang the auth redirect.
     });
   }
 
@@ -73,8 +82,13 @@ class UserProfileRepository {
     final db = _db;
     if (db == null) return null;
 
-    final snap = await db.collection('users').doc(uid).get();
-    if (!snap.exists || snap.data() == null) return null;
-    return UserProfile.fromFirestore(snap.id, snap.data()!);
+    try {
+      final snap =
+          await db.collection('users').doc(uid).get().timeout(const Duration(seconds: 8));
+      if (!snap.exists || snap.data() == null) return null;
+      return UserProfile.fromFirestore(snap.id, snap.data()!);
+    } catch (_) {
+      return null;
+    }
   }
 }

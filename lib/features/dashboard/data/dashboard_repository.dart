@@ -29,13 +29,23 @@ class DashboardRepository {
   }) async {
     final db = _db;
     if (db == null) {
-      return DailyStatus.demo();
+      return DailyStatus.empty(calorieGoal: Env.dailyCalorieGoal);
     }
 
-    final userSnap = await db.collection('users').doc(userId).get();
-    final calorieGoal = (userSnap.data()?['dailyCalorieGoal'] as num?)?.round() ??
-        Env.dailyCalorieGoal;
-    final displayGoal = calorieGoal > 0 ? calorieGoal : Env.dailyCalorieGoal;
+    var displayGoal = Env.dailyCalorieGoal;
+    try {
+      final userSnap = await db
+          .collection('users')
+          .doc(userId)
+          .get()
+          .timeout(const Duration(seconds: 8));
+      final calorieGoal =
+          (userSnap.data()?['dailyCalorieGoal'] as num?)?.round() ??
+              Env.dailyCalorieGoal;
+      displayGoal = calorieGoal > 0 ? calorieGoal : Env.dailyCalorieGoal;
+    } catch (_) {
+      // Offline / unreachable Firestore — keep local aggregates with default goal.
+    }
 
     final tasksTotal = tasks.length;
     final tasksCompleted = tasks.where((t) => t.isCompleted).length;
@@ -45,7 +55,10 @@ class DashboardRepository {
     final caloriesConsumed =
         meals.fold<int>(0, (total, m) => total + m.calories);
 
-    final dietOnTarget = caloriesConsumed <= displayGoal;
+    // 0 kcal must NOT count as "on target" — that was showing a fake 33%.
+    final dietOnTarget = displayGoal > 0 &&
+        caloriesConsumed >= (displayGoal * 0.85).round() &&
+        caloriesConsumed <= displayGoal;
 
     final gymExercisesTotal = exercises.length;
     final gymExercisesCompleted =
@@ -54,9 +67,12 @@ class DashboardRepository {
         gymExercisesCompleted == gymExercisesTotal;
 
     final goalProgress = _computeGoalProgress(
-      routineComplete: routineComplete,
-      dietOnTarget: dietOnTarget,
-      workoutComplete: workoutComplete,
+      tasksCompleted: tasksCompleted,
+      tasksTotal: tasksTotal,
+      caloriesConsumed: caloriesConsumed,
+      calorieGoal: displayGoal,
+      gymExercisesCompleted: gymExercisesCompleted,
+      gymExercisesTotal: gymExercisesTotal,
     );
 
     return DailyStatus(
@@ -73,15 +89,23 @@ class DashboardRepository {
     );
   }
 
+  /// Equal weight for Routine / Diet / Gym. Empty pillars contribute 0.
   double _computeGoalProgress({
-    required bool routineComplete,
-    required bool dietOnTarget,
-    required bool workoutComplete,
+    required int tasksCompleted,
+    required int tasksTotal,
+    required int caloriesConsumed,
+    required int calorieGoal,
+    required int gymExercisesCompleted,
+    required int gymExercisesTotal,
   }) {
-    var score = 0.0;
-    if (routineComplete) score += 0.34;
-    if (dietOnTarget) score += 0.33;
-    if (workoutComplete) score += 0.33;
-    return score.clamp(0.0, 1.0);
+    final routine =
+        tasksTotal > 0 ? tasksCompleted / tasksTotal : 0.0;
+    final diet = calorieGoal > 0 && caloriesConsumed > 0
+        ? (caloriesConsumed.clamp(0, calorieGoal) / calorieGoal)
+        : 0.0;
+    final gym = gymExercisesTotal > 0
+        ? gymExercisesCompleted / gymExercisesTotal
+        : 0.0;
+    return ((routine + diet + gym) / 3.0).clamp(0.0, 1.0);
   }
 }

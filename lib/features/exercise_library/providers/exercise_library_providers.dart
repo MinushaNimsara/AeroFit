@@ -1,5 +1,6 @@
 import 'package:aerofit/features/exercise_library/data/exercise_library_repository.dart';
 import 'package:aerofit/features/exercise_library/domain/exercise.dart';
+import 'package:aerofit/features/exercise_library/domain/exercise_search.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final exerciseLibraryRepositoryProvider =
@@ -38,7 +39,7 @@ final exerciseEquipmentOptionsProvider = Provider<List<String>>((ref) {
 
 final filteredExercisesProvider = Provider<List<Exercise>>((ref) {
   final exercises = ref.watch(exerciseLibraryProvider).valueOrNull ?? const [];
-  final query = ref.watch(exerciseSearchQueryProvider).trim().toLowerCase();
+  final query = ref.watch(exerciseSearchQueryProvider);
   final category = ref.watch(exerciseCategoryFilterProvider);
   final difficulty = ref.watch(exerciseDifficultyFilterProvider);
   final equipment = ref.watch(exerciseEquipmentFilterProvider);
@@ -49,11 +50,7 @@ final filteredExercisesProvider = Provider<List<Exercise>>((ref) {
     if (equipment != null && !exercise.equipment.contains(equipment)) {
       return false;
     }
-    if (query.isEmpty) return true;
-    return exercise.name.toLowerCase().contains(query) ||
-        exercise.primaryMuscle.toLowerCase().contains(query) ||
-        exercise.tags.any((t) => t.toLowerCase().contains(query)) ||
-        exercise.equipment.any((eq) => eq.toLowerCase().contains(query));
+    return ExerciseSearch.matches(exercise, query);
   }).toList(growable: false);
 });
 

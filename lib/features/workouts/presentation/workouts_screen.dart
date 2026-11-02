@@ -1,7 +1,6 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
-import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_category_visual.dart';
-import 'package:aerofit/features/exercise_library/providers/exercise_library_providers.dart';
+import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_demo_stage.dart';
 import 'package:aerofit/features/auth/providers/user_profile_providers.dart';
 import 'package:aerofit/features/enrollment/presentation/widgets/gym_membership_banner.dart';
 import 'package:aerofit/features/enrollment/providers/gym_enrollment_providers.dart';
@@ -56,37 +55,32 @@ class WorkoutsScreen extends ConsumerWidget {
           ),
           if (progress.$2 > 0)
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: 8),
               child: Center(
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: (progress.$1 == progress.$2
-                            ? AppColors.win
-                            : AppColors.primary)
-                        .withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: (progress.$1 == progress.$2
-                              ? AppColors.win
-                              : AppColors.primary)
-                          .withValues(alpha: 0.4),
-                    ),
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '${progress.$1} / ${progress.$2} done',
+                    '${progress.$1}/${progress.$2}',
                     style: TextStyle(
                       color: progress.$1 == progress.$2
                           ? AppColors.win
-                          : AppColors.primary,
+                          : AppColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
               ),
             ),
+          // Reserve space for AppShell's floating SettingsGearButton
+          // (44px wide, positioned right: 12) so actions don't overlap it.
+          const SizedBox(width: 56),
         ],
       ),
       floatingActionButton: splitsAsync.maybeWhen(
@@ -100,6 +94,9 @@ class WorkoutsScreen extends ConsumerWidget {
               splitId: selectedSplitId,
               splits: splits,
             ),
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.background,
+            elevation: 2,
             icon: const Icon(Icons.add_rounded),
             label: const Text('Add Exercise'),
           );
@@ -117,7 +114,7 @@ class WorkoutsScreen extends ConsumerWidget {
             children: [
               if (isTrainee && !enrolled)
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
                   child: GymMembershipBanner(),
                 ),
               const WorkoutSplitsHeader(),
@@ -126,7 +123,7 @@ class WorkoutsScreen extends ConsumerWidget {
                 splitsAsync: splitsAsync,
                 selectedSplitId: selectedSplitId,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Expanded(
                 child: exercisesAsync.when(
                   loading: () => const Center(
@@ -152,6 +149,8 @@ class WorkoutsScreen extends ConsumerWidget {
                       onDelete: (exercise) => _deleteExercise(ref, exercise),
                       onToggleComplete: (exercise, completed) =>
                           _toggleExerciseComplete(ref, exercise, completed),
+                      onReorder: (orderedIds) =>
+                          _reorderExercises(ref, orderedIds),
                     );
                   },
                 ),
@@ -183,6 +182,16 @@ class WorkoutsScreen extends ConsumerWidget {
     final repo = ref.read(exercisesRepositoryProvider);
     if (uid == null || repo == null) return;
     await repo.deleteExercise(uid: uid, exerciseId: exercise.id);
+  }
+
+  Future<void> _reorderExercises(
+    WidgetRef ref,
+    List<String> orderedIds,
+  ) async {
+    final uid = ref.read(authStateProvider).value?.uid;
+    final repo = ref.read(exercisesRepositoryProvider);
+    if (uid == null || repo == null) return;
+    await repo.reorderExercises(uid: uid, orderedIds: orderedIds);
   }
 }
 
@@ -216,18 +225,12 @@ class _StartWorkoutBanner extends ConsumerWidget {
     final inSession = liveStatus?.isWorkingOut == true;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary.withValues(alpha: 0.18),
-              AppColors.surfaceElevated,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -238,13 +241,13 @@ class _StartWorkoutBanner extends ConsumerWidget {
                     fontWeight: FontWeight.w700,
                   ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               inSession
                   ? 'Current: ${liveStatus?.activeExerciseLabel ?? splitName}'
                   : exerciseCount > 0
-                      ? '$exerciseCount exercises lined up for $splitName'
-                      : 'Pick $splitName and start your live gym session',
+                      ? '$exerciseCount exercises · $splitName'
+                      : 'Add exercises to $splitName, then start',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -289,12 +292,14 @@ class _GymBody extends StatelessWidget {
     required this.splitName,
     required this.onDelete,
     required this.onToggleComplete,
+    required this.onReorder,
   });
 
   final List<GymExercise> exercises;
   final String? splitName;
   final void Function(GymExercise exercise) onDelete;
   final void Function(GymExercise exercise, bool completed) onToggleComplete;
+  final void Function(List<String> orderedIds) onReorder;
 
   @override
   Widget build(BuildContext context) {
@@ -342,20 +347,52 @@ class _GymBody extends StatelessWidget {
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 88),
+    return ReorderableListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      buildDefaultDragHandles: false,
+      proxyDecorator: (child, index, animation) {
+        return AnimatedBuilder(
+          animation: animation,
+          builder: (context, child) {
+            final t = Curves.easeInOut.transform(animation.value);
+            return Material(
+              elevation: 1 + 4 * t,
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(12),
+              child: child,
+            );
+          },
+          child: child,
+        );
+      },
       itemCount: exercises.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      onReorder: (oldIndex, newIndex) {
+        var insertAt = newIndex;
+        if (insertAt > oldIndex) insertAt -= 1;
+        final next = List<GymExercise>.of(exercises);
+        final moved = next.removeAt(oldIndex);
+        next.insert(insertAt, moved);
+        onReorder(next.map((e) => e.id).toList());
+      },
       itemBuilder: (context, index) {
-        return _ExerciseCard(
-          exercise: exercises[index],
-          onDelete: () => onDelete(exercises[index]),
-          onToggleComplete: (completed) =>
-              onToggleComplete(exercises[index], completed),
-        )
-            .animate()
-            .fadeIn(delay: Duration(milliseconds: 45 * index), duration: 300.ms)
-            .slideY(begin: 0.04, end: 0);
+        final exercise = exercises[index];
+        return Padding(
+          key: ValueKey(exercise.id),
+          padding: EdgeInsets.only(bottom: index == exercises.length - 1 ? 0 : 6),
+          child: _ExerciseCard(
+            index: index,
+            exercise: exercise,
+            onDelete: () => onDelete(exercise),
+            onToggleComplete: (completed) =>
+                onToggleComplete(exercise, completed),
+          )
+              .animate()
+              .fadeIn(
+                delay: Duration(milliseconds: 35 * index),
+                duration: 260.ms,
+              )
+              .slideY(begin: 0.03, end: 0),
+        );
       },
     );
   }
@@ -363,11 +400,13 @@ class _GymBody extends StatelessWidget {
 
 class _ExerciseCard extends ConsumerWidget {
   const _ExerciseCard({
+    required this.index,
     required this.exercise,
     required this.onDelete,
     required this.onToggleComplete,
   });
 
+  final int index;
   final GymExercise exercise;
   final VoidCallback onDelete;
   final void Function(bool completed) onToggleComplete;
@@ -379,225 +418,186 @@ class _ExerciseCard extends ConsumerWidget {
     final exerciseId = exercise.exerciseId;
 
     return Dismissible(
-      key: ValueKey(exercise.id),
+      key: ValueKey('dismiss-${exercise.id}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppColors.danger.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(16),
+          color: AppColors.danger.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
       ),
       onDismissed: (_) => onDelete(),
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
-        opacity: done ? 0.65 : 1,
+        opacity: done ? 0.55 : 1,
         child: Material(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: exerciseId == null || exerciseId.isEmpty
-              ? null
-              : () => context.push('/workouts/exercise/$exerciseId'),
-          child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: done
-                  ? AppColors.win.withValues(alpha: 0.45)
-                  : const Color(0xFF252B38),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ExerciseThumbnail(
-                  imageUrl: exercise.imageUrl,
-                  exerciseId: exercise.exerciseId,
+            borderRadius: BorderRadius.circular(12),
+            onTap: exerciseId == null || exerciseId.isEmpty
+                ? null
+                : () => context.push('/workouts/exercise/$exerciseId'),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: done
+                      ? AppColors.win.withValues(alpha: 0.35)
+                      : AppColors.surfaceElevated,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        exercise.name,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              decoration:
-                                  done ? TextDecoration.lineThrough : null,
-                              color: done
-                                  ? AppColors.textSecondary
-                                  : AppColors.textPrimary,
-                            ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 10, 10, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Icon(
+                          Icons.drag_indicator_rounded,
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
                       ),
-                    if (exercise.weightOrSetting.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Row(
+                    ),
+                    _ExerciseThumbnail(
+                      imageUrl: exercise.imageUrl,
+                      exerciseId: exercise.exerciseId,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.tune_rounded,
-                            size: 14,
-                            color: AppColors.primary,
+                          Text(
+                            exercise.name,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  decoration: done
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: done
+                                      ? AppColors.textSecondary
+                                      : AppColors.textPrimary,
+                                ),
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
+                          if (exercise.weightOrSetting.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
                               exercise.weightOrSetting,
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
-                                    color: AppColors.accent,
+                                    color: AppColors.textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
                             ),
+                          ],
+                          if (exercise.notes.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              exercise.notes,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: AppColors.textSecondary
+                                        .withValues(alpha: 0.75),
+                                    height: 1.3,
+                                  ),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                          Text(
+                            time,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: AppColors.textSecondary
+                                      .withValues(alpha: 0.7),
+                                  fontSize: 11,
+                                ),
                           ),
                         ],
                       ),
-                    ],
-                    if (exercise.notes.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        exercise.notes,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                              height: 1.35,
+                    ),
+                    const SizedBox(width: 6),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => onToggleComplete(!done),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: done
+                                  ? AppColors.win.withValues(alpha: 0.16)
+                                  : AppColors.surfaceElevated,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: done
+                                    ? AppColors.win.withValues(alpha: 0.55)
+                                    : AppColors.textSecondary
+                                        .withValues(alpha: 0.35),
+                              ),
                             ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Text(
-                      time,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.textSecondary,
+                            child: Icon(
+                              done
+                                  ? Icons.check_rounded
+                                  : Icons.check_box_outline_blank_rounded,
+                              color: done
+                                  ? AppColors.win
+                                  : AppColors.textSecondary,
+                              size: 18,
+                            ),
                           ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => onToggleComplete(!done),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: done
-                            ? AppColors.win.withValues(alpha: 0.18)
-                            : AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: done
-                              ? AppColors.win.withValues(alpha: 0.6)
-                              : const Color(0xFF353D4D),
-                        ),
-                      ),
-                      child: Icon(
-                        done
-                            ? Icons.check_rounded
-                            : Icons.check_box_outline_blank_rounded,
-                        color: done ? AppColors.win : AppColors.textSecondary,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          ),
-          ),
-        ),
         ),
       ),
     );
   }
 }
 
-class _ExerciseThumbnail extends ConsumerWidget {
+class _ExerciseThumbnail extends StatelessWidget {
   const _ExerciseThumbnail({this.imageUrl, this.exerciseId});
 
   final String? imageUrl;
   final String? exerciseId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    const size = 72.0;
-
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          imageUrl!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          loadingBuilder: (_, child, progress) {
-            if (progress == null) return child;
-            return Container(
-              width: size,
-              height: size,
-              color: AppColors.surfaceElevated,
-              child: const Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            );
-          },
-          errorBuilder: (_, __, ___) => _placeholder(context, ref, size),
-        ),
-      );
-    }
-
-    return _placeholder(context, ref, size);
-  }
-
-  Widget _placeholder(BuildContext context, WidgetRef ref, double size) {
-    final id = exerciseId;
-    if (id != null && id.isNotEmpty) {
-      final exercise = ref.watch(exerciseByIdProvider(id)).valueOrNull;
-      if (exercise != null) {
-        return ExerciseCategoryIcon(category: exercise.category, size: size);
-      }
-    }
-
-    return Container(
+  Widget build(BuildContext context) {
+    const size = 56.0;
+    return ExerciseDemoStage(
+      imageUrl: imageUrl,
+      exerciseId: exerciseId,
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF252B38)),
-      ),
-      child: const Icon(
-        Icons.image_not_supported_outlined,
-        color: AppColors.textSecondary,
-        size: 28,
-      ),
+      borderRadius: 10,
+      fit: BoxFit.contain,
     );
   }
 }

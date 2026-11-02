@@ -1,5 +1,6 @@
 import 'package:aerofit/core/router/app_router.dart';
 import 'package:aerofit/core/theme/app_theme.dart';
+import 'package:aerofit/features/app_update/presentation/app_update_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,6 +17,11 @@ class AeroFitApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       routerConfig: router,
+      builder: (context, child) {
+        return AppUpdateGate(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

@@ -34,13 +34,15 @@ final dailyStatusProvider = StreamProvider<DailyStatus>((ref) {
   }
 
   final uid = auth.uid;
-  ref.watch(workoutSplitsStreamProvider);
+  // Use resolved split id only — never watch the splits AsyncValue directly,
+  // or a Firestore offline error inherits into this provider and blanks the hub.
   final splitId = ref.watch(effectiveSelectedSplitIdProvider);
 
   return Stream.multi((controller) {
     var tasks = <RoutineTask>[];
     var meals = <MealEntry>[];
     var exercises = <GymExercise>[];
+    var emittedOnce = false;
 
     Future<void> emitStatus() async {
       try {
@@ -50,31 +52,51 @@ final dailyStatusProvider = StreamProvider<DailyStatus>((ref) {
           meals: meals,
           exercises: exercises,
         );
+        emittedOnce = true;
         if (!controller.isClosed) controller.add(status);
-      } catch (e, st) {
-        if (!controller.isClosed) controller.addError(e, st);
+      } catch (_) {
+        // Never hard-fail the dashboard on Firestore/network issues.
+        if (!controller.isClosed) {
+          controller.add(DailyStatus.empty());
+          emittedOnce = true;
+        }
       }
     }
 
-    final subTasks = tasksRepo.watchTasks(uid).listen((t) {
-      tasks = t;
-      unawaited(emitStatus());
-    });
-    final subMeals = mealsRepo.watchTodayMeals(uid).listen((m) {
-      meals = m;
-      unawaited(emitStatus());
-    });
+    void onStreamError(Object _, StackTrace __) {
+      if (!emittedOnce && !controller.isClosed) {
+        controller.add(DailyStatus.empty());
+        emittedOnce = true;
+      }
+    }
+
+    final subTasks = tasksRepo.watchTasks(uid).listen(
+      (t) {
+        tasks = t;
+        unawaited(emitStatus());
+      },
+      onError: onStreamError,
+    );
+    final subMeals = mealsRepo.watchTodayMeals(uid).listen(
+      (m) {
+        meals = m;
+        unawaited(emitStatus());
+      },
+      onError: onStreamError,
+    );
     StreamSubscription<List<GymExercise>>? subExercises;
     if (splitId != null && splitId.isNotEmpty) {
-      subExercises = exercisesRepo
-          .watchExercisesForSplit(uid, splitId)
-          .listen((e) {
-        exercises = e;
-        unawaited(emitStatus());
-      });
-    } else {
-      unawaited(emitStatus());
+      subExercises = exercisesRepo.watchExercisesForSplit(uid, splitId).listen(
+        (e) {
+          exercises = e;
+          unawaited(emitStatus());
+        },
+        onError: onStreamError,
+      );
     }
+
+    // Immediate first paint so login → dashboard is never stuck on spinner.
+    unawaited(emitStatus());
 
     controller.onCancel = () {
       subTasks.cancel();

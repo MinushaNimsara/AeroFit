@@ -38,30 +38,37 @@ class _WorkoutSplitsHeaderState extends ConsumerState<WorkoutSplitsHeader> {
       ),
       data: (splits) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Workout splits',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
                 children: [
-                  FilledButton.tonalIcon(
-                    onPressed: () => showBuildMyRoutineDialog(context),
-                    icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                    label: const Text('Build My Routine'),
+                  Expanded(
+                    child: Text(
+                      'Splits',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                    ),
                   ),
-                  OutlinedButton.icon(
+                  TextButton(
+                    onPressed: () => showBuildMyRoutineDialog(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Build routine'),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
                     onPressed: () => _showCreateSplitDialog(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('New Split'),
+                    tooltip: 'New split',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.add_rounded, size: 22),
                   ),
                 ],
               ),
@@ -218,51 +225,45 @@ class _SplitChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? AppColors.primary.withValues(alpha: 0.25)
-          : AppColors.surfaceElevated,
-      borderRadius: BorderRadius.circular(20),
+      color: selected ? AppColors.primary : AppColors.surfaceElevated,
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onSelect,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.only(left: 14, right: 6),
-          height: 34,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? AppColors.primary.withValues(alpha: 0.5)
-                  : const Color(0xFF252B38),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                split.name,
-                style: TextStyle(
-                  color: selected ? AppColors.primary : AppColors.textPrimary,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(width: 4),
-              InkWell(
-                onTap: onDelete,
-                borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 16,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12, right: 4),
+          child: SizedBox(
+            height: 36,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  split.name,
+                  style: TextStyle(
                     color: selected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
+                        ? AppColors.background
+                        : AppColors.textPrimary,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 13,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 2),
+                InkWell(
+                  onTap: onDelete,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 15,
+                      color: selected
+                          ? AppColors.background.withValues(alpha: 0.75)
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -279,34 +280,36 @@ class _EmptySplitsHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF252B38)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          const Icon(Icons.fitness_center_rounded, color: AppColors.primary),
-          const SizedBox(height: 8),
           Text(
-            'Build your own routine from the exercise library, or start with an empty split.',
+            'No splits yet',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Build a routine from the library, or start with an empty split.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
                 ),
           ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
+          const SizedBox(height: 14),
+          FilledButton(
             onPressed: onBuildRoutine,
-            icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-            label: const Text('Build My Routine'),
+            child: const Text('Build My Routine'),
           ),
-          const SizedBox(height: 8),
           TextButton(
             onPressed: onCreate,
-            child: const Text('Or create an empty split'),
+            child: const Text('Create empty split'),
           ),
         ],
       ),

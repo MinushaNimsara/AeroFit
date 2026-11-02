@@ -20,7 +20,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+/// Shared with [AppUpdateGate] so dialogs work from [MaterialApp.builder].
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+final _rootNavigatorKey = rootNavigatorKey;
 
 const _loginPath = '/login';
 const _masterAdminLoginPath = '/master-admin';
@@ -78,21 +80,20 @@ String? _redirectForAuthSession({
     return _redirectTo(location, _loginPath);
   }
 
-  // Block navigation until sign-up finishes saving the Firestore profile.
-  if (registrationInProgress || awaitingProfile) {
+  // Profile write may still be in flight after Auth succeeds — do NOT trap the
+  // user on the login spinner. Dashboard works offline with empty status.
+  if ((registrationInProgress || awaitingProfile) && user == null) {
     if (isOnLogin) return null;
-    if (isOnTraineeShell || isOnCoachRoute || isOnMasterAdminDashboard) {
-      return _redirectTo(location, _loginPath);
-    }
-    return null;
+    return _redirectTo(location, _loginPath);
   }
 
   if (profileLoading) {
     if (isOnMasterAdminDashboard || isOnCoachRoute) {
       return _redirectTo(location, '/');
     }
+    // Authenticated + profile still loading → allow trainee hub.
     if (isOnLogin) {
-      return null;
+      return _redirectTo(location, '/');
     }
     return null;
   }
@@ -145,9 +146,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final profile = profileAsync?.valueOrNull;
         final registrationInProgress =
             ref.read(authRegistrationInProgressProvider);
-        final awaitingProfile = user != null &&
-            (profileLoading ||
-                ((profileAsync?.hasValue ?? false) && profile == null));
+        // Only block while sign-up is actively writing the profile.
+        // Do NOT trap on endless Firestore loading (offline / bad network) —
+        // that kept users stuck on the login spinner after a successful auth.
+        final awaitingProfile = registrationInProgress;
 
         final isMasterAdmin =
             user != null && ref.read(isMasterAdminAuthorizedProvider);
@@ -172,9 +174,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: _loginPath,
         name: 'login',
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => const NoTransitionPage(
-          child: LoginScreen(),
-        ),
+        // Use builder (not NoTransitionPage) — NoTransitionPage left a blank
+        // CanvasKit surface on Flutter web in production.
+        builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
         path: _masterAdminLoginPath,

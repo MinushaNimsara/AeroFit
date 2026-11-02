@@ -11,6 +11,7 @@ class GymExercise {
     this.imageUrl,
     this.exerciseId,
     this.completedDate,
+    this.sortOrder = 0,
   });
 
   final String id;
@@ -26,6 +27,9 @@ class GymExercise {
   final DateTime timestamp;
   /// `YYYY-MM-DD` when last checked off; compared to today for daily reset.
   final String? completedDate;
+  /// Manual order within a split (ascending). Missing legacy docs fall back
+  /// via repository sort (timestamp).
+  final int sortOrder;
 
   static String dateKey([DateTime? date]) {
     final d = date ?? DateTime.now();
@@ -44,6 +48,7 @@ class GymExercise {
   ) {
     final data = doc.data() ?? {};
     final ts = data['timestamp'];
+    final rawOrder = data['sortOrder'];
     return GymExercise(
       id: data['id'] as String? ?? doc.id,
       name: data['name'] as String? ?? '',
@@ -53,6 +58,11 @@ class GymExercise {
       imageUrl: data['imageUrl'] as String?,
       exerciseId: data['exerciseId'] as String?,
       completedDate: data['completedDate'] as String?,
+      sortOrder: rawOrder is int
+          ? rawOrder
+          : rawOrder is num
+              ? rawOrder.toInt()
+              : 0,
       timestamp: ts is Timestamp ? ts.toDate() : DateTime.now(),
     );
   }
@@ -64,6 +74,7 @@ class GymExercise {
         'notes': notes,
         'splitId': splitId,
         'imageUrl': imageUrl,
+        'sortOrder': sortOrder,
         if (exerciseId != null) 'exerciseId': exerciseId,
         if (completedDate != null) 'completedDate': completedDate,
         'timestamp': Timestamp.fromDate(timestamp),

@@ -1,6 +1,6 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/exercise_library/domain/exercise.dart';
-import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_category_visual.dart';
+import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_demo_stage.dart';
 import 'package:flutter/material.dart';
 
 class ExerciseListCard extends StatelessWidget {
@@ -38,7 +38,15 @@ class ExerciseListCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ExerciseCategoryIcon(category: exercise.category),
+              ExerciseDemoStage(
+                assetPath: exercise.image,
+                exerciseId: exercise.id,
+                category: exercise.category,
+                width: 64,
+                height: 64,
+                borderRadius: 12,
+                fit: BoxFit.cover,
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

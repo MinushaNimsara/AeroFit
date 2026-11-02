@@ -24,7 +24,15 @@ final todayExercisesStreamProvider = StreamProvider<List<GymExercise>>((ref) {
     return Stream.value(const []);
   }
 
-  return repo.watchTodayExercises(auth.uid);
+  return Stream<List<GymExercise>>.multi((controller) {
+    final sub = repo.watchTodayExercises(auth.uid).listen(
+      controller.add,
+      onError: (_) {
+        if (!controller.isClosed) controller.add(const []);
+      },
+    );
+    controller.onCancel = sub.cancel;
+  });
 });
 
 final todayExerciseCountProvider = Provider<int>((ref) {
@@ -42,7 +50,15 @@ final splitExercisesStreamProvider = StreamProvider<List<GymExercise>>((ref) {
     return Stream.value(const []);
   }
 
-  return repo.watchExercisesForSplit(auth.uid, splitId);
+  return Stream<List<GymExercise>>.multi((controller) {
+    final sub = repo.watchExercisesForSplit(auth.uid, splitId).listen(
+      controller.add,
+      onError: (_) {
+        if (!controller.isClosed) controller.add(const []);
+      },
+    );
+    controller.onCancel = sub.cancel;
+  });
 });
 
 /// Completion progress for the active workout split (checked off today).

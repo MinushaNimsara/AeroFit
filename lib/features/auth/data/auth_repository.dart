@@ -1,15 +1,23 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
+
 import 'package:aerofit/features/auth/domain/activity_level.dart';
 import 'package:aerofit/features/auth/domain/calorie_calculator.dart';
+import 'package:aerofit/features/auth/domain/gender.dart';
 import 'package:aerofit/features/auth/domain/sign_up_profile.dart';
 import 'package:aerofit/features/auth/domain/user_profile.dart';
 import 'package:aerofit/features/auth/domain/user_role.dart';
 import 'package:aerofit/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
-/// Email/password auth backed by the manually configured Firebase Web app.
+/// Email/password (+ Google) auth backed by Firebase Auth.
 class AuthRepository {
   AuthRepository({
     FirebaseAuth? auth,
@@ -20,58 +28,457 @@ class AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
 
+  static const _firestoreTimeout = Duration(seconds: 8);
+  // Phone networks here are often 200–600ms RTT; keep headroom for Auth + reCAPTCHA.
+  static const _authTimeout = Duration(seconds: 45);
+  static const _restTimeout = Duration(seconds: 20);
+  static const _signInTimeout = Duration(seconds: 30);
+
   User? get currentUser => _auth.currentUser;
 
   Stream<User?> authStateChanges() => _auth.authStateChanges();
+
+  /// Identity Toolkit key: Android app key on Android, Web key elsewhere (incl. browsers).
+  static String get _identityToolkitApiKey {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return DefaultFirebaseOptions.android.apiKey;
+    }
+    return DefaultFirebaseOptions.web.apiKey;
+  }
+
+  /// REST IdP `requestUri` — real origin on web, localhost for native recover.
+  static String get _restRequestUri =>
+      kIsWeb ? Uri.base.origin : 'http://localhost';
+
+  /// Prefer REST-first / REST recover on Android + Web (Play Integrity / browser hangs).
+  static bool get _preferRestAuth =>
+      kIsWeb || defaultTargetPlatform == TargetPlatform.android;
 
   Future<UserCredential> signIn({
     required String email,
     required String password,
   }) async {
-    final credential = await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
-
+    final normalizedEmail = email.trim();
     try {
-      final user = credential.user ?? _auth.currentUser;
-      if (user != null) {
-        final authEmail = user.email?.trim();
-        final authDisplayName = user.displayName?.trim();
-        final resolvedName = authDisplayName != null && authDisplayName.isNotEmpty
-            ? authDisplayName
-            : UserProfile.emailPrefix(authEmail);
-
-        final payload = <String, dynamic>{};
-        if (authEmail != null && authEmail.isNotEmpty) {
-          payload['email'] = authEmail;
-        }
-        if (resolvedName.isNotEmpty) {
-          payload['rosterDisplayName'] = resolvedName;
-          payload['username'] = resolvedName;
-          payload['displayName'] = resolvedName;
-        }
-        if (payload.isNotEmpty) {
-          await _firestore.collection('users').doc(user.uid).set(
-                payload,
-                SetOptions(merge: true),
-              );
-        }
-      }
+      final credential = await _auth
+          .signInWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          )
+          .timeout(_authTimeout);
+      await _syncIdentityBestEffort(credential.user ?? _auth.currentUser);
+      return credential;
+    } on FirebaseAuthException {
+      rethrow;
     } catch (_) {
-      // Do not block sign-in if metadata syncing fails on Safari.
+      // Auth SDK can hang (attestation / flaky network) — REST then session recover.
+      if (_preferRestAuth) {
+        await _signInViaRest(email: normalizedEmail, password: password);
+        return await _requireSignIn(
+          email: normalizedEmail,
+          password: password,
+        );
+      }
+      rethrow;
     }
-
-    return credential;
   }
 
-  Future<UserCredential?> signUp({
+  Future<void> _signInViaRest({
+    required String email,
+    required String password,
+  }) async {
+    final apiKey = _identityToolkitApiKey;
+    final url = Uri.parse(
+      'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$apiKey',
+    );
+    final response = await http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': email,
+            'password': password,
+            'returnSecureToken': true,
+          }),
+        )
+        .timeout(_restTimeout);
+
+    final Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw FirebaseAuthException(
+        code: 'network-request-failed',
+        message: 'Could not reach Firebase Auth. Check your internet.',
+      );
+    }
+
+    if (response.statusCode == 200) return;
+
+    final rawMsg =
+        (body['error'] as Map<String, dynamic>?)?['message'] as String? ??
+            'LOGIN_FAILED';
+    if (rawMsg.contains('EMAIL_NOT_FOUND') ||
+        rawMsg.contains('INVALID_PASSWORD') ||
+        rawMsg.contains('INVALID_LOGIN_CREDENTIALS')) {
+      throw FirebaseAuthException(
+        code: 'invalid-credential',
+        message: 'Incorrect email or password.',
+      );
+    }
+    if (rawMsg.contains('USER_DISABLED')) {
+      throw FirebaseAuthException(
+        code: 'user-disabled',
+        message: 'This account has been disabled.',
+      );
+    }
+    if (rawMsg.contains('TOO_MANY_ATTEMPTS')) {
+      throw FirebaseAuthException(
+        code: 'too-many-requests',
+        message: 'Too many attempts. Please try again later.',
+      );
+    }
+    throw FirebaseAuthException(
+      code: 'network-request-failed',
+      message: 'Sign in failed: $rawMsg',
+    );
+  }
+
+  /// Web OAuth client id — [GoogleSignIn.clientId] on web and
+  /// [GoogleSignIn.serverClientId] on Android so Firebase gets an ID token.
+  /// From google-services.json `oauth_client` type 3.
+  static const _googleWebClientId =
+      '189303398586-nbum19rkc9lh4dr5qd5qeus906t0iis8.apps.googleusercontent.com';
+
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: const ['email', 'profile'],
+    clientId: kIsWeb ? _googleWebClientId : null,
+    serverClientId: _googleWebClientId,
+  );
+
+  /// Shared Google Sign-In for Android + Web (GIS idToken → credential / REST).
+  /// Avoids Firebase web `signInWithProvider` popup / sessionStorage failures.
+  Future<UserCredential> signInWithGoogle() async {
+    try {
+      final account = await _googleSignIn.signIn();
+      if (account == null) {
+        throw FirebaseAuthException(
+          code: 'aborted-by-user',
+          message: 'Google Sign-In was cancelled.',
+        );
+      }
+
+      final googleAuth = await account.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'missing-id-token',
+          message: kIsWeb
+              ? 'Google did not return an ID token. Check Firebase Authorized domains and the Web OAuth client id.'
+              : 'Google did not return an ID token. In Firebase Console → Project settings → Your Android app: add SHA-1 and SHA-256, then download a fresh google-services.json.',
+        );
+      }
+
+      final oauth = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: idToken,
+      );
+
+      // Prefer native credential first. Calling REST IdP *before* credential
+      // can leave the Auth SDK wedged on some Honor/Huawei builds.
+      try {
+        final userCredential = await _auth
+            .signInWithCredential(oauth)
+            .timeout(const Duration(seconds: 18));
+        final user = userCredential.user ?? _auth.currentUser;
+        if (user != null) await _ensureTraineeProfileExists(user);
+        return userCredential;
+      } on TimeoutException {
+        // Fall through to REST + email-session recover.
+      } on FirebaseAuthException {
+        // Fall through — REST path still validates the Google token.
+      }
+
+      final rest = await _signInWithGoogleIdTokenViaRest(idToken);
+      final email = (rest['email'] as String?)?.trim().isNotEmpty == true
+          ? (rest['email'] as String).trim()
+          : (account.email.trim());
+      if (email.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'auth-sdk-hang',
+          message:
+              'Google OK via REST but no email returned to finish the session.',
+        );
+      }
+
+      // Fresh Google tokens after REST (previous idToken may be spent).
+      final refreshed = await account.authentication;
+      final retryToken = refreshed.idToken ?? idToken;
+      final retryOauth = GoogleAuthProvider.credential(
+        accessToken: refreshed.accessToken ?? googleAuth.accessToken,
+        idToken: retryToken,
+      );
+      try {
+        final userCredential = await _auth
+            .signInWithCredential(retryOauth)
+            .timeout(const Duration(seconds: 12));
+        final user = userCredential.user ?? _auth.currentUser;
+        if (user != null) await _ensureTraineeProfileExists(user);
+        return userCredential;
+      } on TimeoutException {
+        // Continue — email session recover below.
+      } on FirebaseAuthException {
+        // Continue.
+      }
+
+      // Last resort: enable email/password on this Google account via REST,
+      // then use email sign-in (works when credential path hangs).
+      final firebaseIdToken = rest['idToken'] as String?;
+      if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'auth-sdk-hang',
+          message:
+              'Google OK but Firebase Auth hung and no session token to recover.',
+        );
+      }
+      final tempPassword = _randomPassword();
+      await _setPasswordViaRest(
+        idToken: firebaseIdToken,
+        password: tempPassword,
+      );
+      final userCredential = await _auth
+          .signInWithEmailAndPassword(email: email, password: tempPassword)
+          .timeout(_signInTimeout);
+      final user = userCredential.user ?? _auth.currentUser;
+      if (user != null) await _ensureTraineeProfileExists(user);
+      return userCredential;
+    } on FirebaseAuthException {
+      rethrow;
+    } on PlatformException catch (e) {
+      final code = e.code;
+      final details = '${e.message ?? ''} ${e.details ?? ''}'.toLowerCase();
+      if (code == 'sign_in_canceled' ||
+          code == 'sign_in_cancelled' ||
+          details.contains('canceled') ||
+          details.contains('cancelled')) {
+        throw FirebaseAuthException(
+          code: 'aborted-by-user',
+          message: 'Google Sign-In was cancelled.',
+        );
+      }
+      // Common: ApiException: 10 / DEVELOPER_ERROR → SHA-1 / OAuth client mismatch.
+      if (details.contains('10') ||
+          details.contains('developer_error') ||
+          details.contains('api_exception: 10')) {
+        throw FirebaseAuthException(
+          code: 'missing-id-token',
+          message:
+              'Google Sign-In config error (code 10). Add SHA-1 + SHA-256 in Firebase, download fresh google-services.json, rebuild.',
+        );
+      }
+      if (details.contains('7') || details.contains('network')) {
+        throw FirebaseAuthException(
+          code: 'network-request-failed',
+          message: 'Google Sign-In network error. Check Wi‑Fi / mobile data.',
+        );
+      }
+      throw FirebaseAuthException(
+        code: 'registration-failed',
+        message: 'Google Sign-In failed ($code): ${e.message ?? e}',
+      );
+    }
+  }
+
+  String _randomPassword() {
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#';
+    final rng = Random.secure();
+    return List.generate(24, (_) => chars[rng.nextInt(chars.length)]).join();
+  }
+
+  Future<void> _setPasswordViaRest({
+    required String idToken,
+    required String password,
+  }) async {
+    final apiKey = _identityToolkitApiKey;
+    final url = Uri.parse(
+      'https://identitytoolkit.googleapis.com/v1/accounts:update?key=$apiKey',
+    );
+    final response = await http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'idToken': idToken,
+            'password': password,
+            'returnSecureToken': true,
+          }),
+        )
+        .timeout(_restTimeout);
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw FirebaseAuthException(
+        code: 'auth-sdk-hang',
+        message: 'Could not finish Google session recover (bad server reply).',
+      );
+    }
+    if (response.statusCode == 200) return;
+    final rawMsg =
+        (body['error'] as Map<String, dynamic>?)?['message'] as String? ??
+            'UPDATE_FAILED';
+    throw FirebaseAuthException(
+      code: 'auth-sdk-hang',
+      message: 'Google session recover failed: $rawMsg',
+    );
+  }
+
+  Future<Map<String, dynamic>> _signInWithGoogleIdTokenViaRest(
+    String idToken,
+  ) async {
+    final apiKey = _identityToolkitApiKey;
+    final url = Uri.parse(
+      'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=$apiKey',
+    );
+    final response = await http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'postBody':
+                'id_token=${Uri.encodeQueryComponent(idToken)}&providerId=google.com',
+            'requestUri': _restRequestUri,
+            'returnIdpCredential': true,
+            'returnSecureToken': true,
+          }),
+        )
+        .timeout(_restTimeout);
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw FirebaseAuthException(
+        code: 'network-request-failed',
+        message: 'Could not reach Firebase Auth for Google Sign-In.',
+      );
+    }
+
+    if (response.statusCode == 200) return body;
+
+    final rawMsg =
+        (body['error'] as Map<String, dynamic>?)?['message'] as String? ??
+            'GOOGLE_SIGNIN_FAILED';
+    if (rawMsg.contains('OPERATION_NOT_ALLOWED')) {
+      throw FirebaseAuthException(
+        code: 'operation-not-allowed',
+        message: 'Google Sign-In is not enabled in Firebase Console.',
+      );
+    }
+    throw FirebaseAuthException(
+      code: 'registration-failed',
+      message: 'Google Sign-In rejected by Firebase: $rawMsg',
+    );
+  }
+
+  Future<void> _syncIdentityBestEffort(User? user) async {
+    if (user == null) return;
+    try {
+      final authEmail = user.email?.trim();
+      final authDisplayName = user.displayName?.trim();
+      final resolvedName = authDisplayName != null && authDisplayName.isNotEmpty
+          ? authDisplayName
+          : UserProfile.emailPrefix(authEmail);
+
+      final payload = <String, dynamic>{};
+      if (authEmail != null && authEmail.isNotEmpty) {
+        payload['email'] = authEmail;
+      }
+      if (resolvedName.isNotEmpty) {
+        payload['rosterDisplayName'] = resolvedName;
+        payload['username'] = resolvedName;
+        payload['displayName'] = resolvedName;
+      }
+      if (payload.isEmpty) return;
+
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .set(payload, SetOptions(merge: true))
+          .timeout(_firestoreTimeout);
+    } catch (_) {
+      // Never block auth on Firestore / network failures.
+    }
+  }
+
+  Future<void> _ensureTraineeProfileExists(User user) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .get()
+          .timeout(_firestoreTimeout);
+      if (doc.exists && doc.data() != null) {
+        await _syncIdentityBestEffort(user);
+        return;
+      }
+
+      final email = user.email?.trim() ?? '';
+      final displayName = (user.displayName?.trim().isNotEmpty ?? false)
+          ? user.displayName!.trim()
+          : UserProfile.emailPrefix(email);
+
+      await _createTraineeProfile(
+        uid: user.uid,
+        email: email,
+        profile: const SignUpProfile(
+          displayName: '',
+          gender: Gender.male,
+          age: 25,
+          heightCm: 170,
+          weightKg: 70,
+          activityLevel: ActivityLevel.sedentary,
+        ),
+        displayName: displayName,
+      );
+    } catch (_) {
+      // Profile can sync later when network recovers.
+    }
+  }
+
+  Future<UserCredential> signUp({
     required String email,
     required String password,
     required SignUpProfile profile,
   }) async {
     final normalizedEmail = email.trim();
     final normalizedPassword = password;
+
+    // Android Play Integrity / web Auth SDK can hang on createUser.
+    // Prefer Identity Toolkit REST first on Android + Web.
+    if (_preferRestAuth) {
+      try {
+        return await _signUpViaRest(
+          email: normalizedEmail,
+          password: normalizedPassword,
+          profile: profile,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'email-already-in-use') {
+          final recovered = await _tryRecoverPartialRegistration(
+            email: normalizedEmail,
+            password: normalizedPassword,
+            profile: profile,
+          );
+          if (recovered != null) return recovered;
+        }
+        rethrow;
+      } catch (_) {
+        // Fall through to native SDK path.
+      }
+    }
 
     try {
       return await _createAccountAndProfile(
@@ -86,55 +493,43 @@ class AuthRepository {
           password: normalizedPassword,
           profile: profile,
         );
-        if (recovered != null) {
-          return recovered;
-        }
+        if (recovered != null) return recovered;
         throw FirebaseAuthException(
-          code: e.code,
+          code: 'email-already-in-use',
           message:
               'This email is already registered. Switch to Sign In and log in instead.',
         );
       }
       rethrow;
     } catch (e) {
-      // If client-side FlutterFire/Safari throws, first check if the account was
-      // actually created on Firebase Auth and recover session & profile:
       final recovered = await _tryRecoverPartialRegistration(
         email: normalizedEmail,
         password: normalizedPassword,
         profile: profile,
       );
-      if (recovered != null) {
-        return recovered;
+      if (recovered != null) return recovered;
+
+      final current = _auth.currentUser;
+      if (current != null && current.uid.isNotEmpty) {
+        final displayName = profile.displayName.trim().isNotEmpty
+            ? profile.displayName.trim()
+            : UserProfile.emailPrefix(normalizedEmail);
+        try {
+          await _createTraineeProfile(
+            uid: current.uid,
+            email: normalizedEmail,
+            profile: profile,
+            displayName: displayName,
+          );
+        } catch (_) {}
+        return await _requireSignIn(
+          email: normalizedEmail,
+          password: normalizedPassword,
+        );
       }
 
       try {
-        final current = _auth.currentUser;
-        if (current != null && current.uid.isNotEmpty) {
-          final displayName = profile.displayName.trim().isNotEmpty
-              ? profile.displayName.trim()
-              : UserProfile.emailPrefix(normalizedEmail);
-          try {
-            await _createTraineeProfile(
-              uid: current.uid,
-              email: normalizedEmail,
-              profile: profile,
-              displayName: displayName,
-            );
-          } catch (_) {}
-          try {
-            return await _auth.signInWithEmailAndPassword(
-              email: normalizedEmail,
-              password: normalizedPassword,
-            );
-          } catch (_) {}
-          return null;
-        }
-      } catch (_) {}
-
-      // If not yet created, execute the fallback via Firebase Auth Identity Toolkit REST API.
-      try {
-        return await _signUpViaRestFallback(
+        return await _signUpViaRest(
           email: normalizedEmail,
           password: normalizedPassword,
           profile: profile,
@@ -142,50 +537,71 @@ class AuthRepository {
       } on FirebaseAuthException {
         rethrow;
       } catch (restErr) {
-        try {
-          if (_auth.currentUser != null) {
-            try {
-              return await _auth.signInWithEmailAndPassword(
-                email: normalizedEmail,
-                password: normalizedPassword,
-              );
-            } catch (_) {}
-            return null;
-          }
-        } catch (_) {}
         throw FirebaseAuthException(
           code: 'registration-failed',
-          message: 'Registration could not be completed: $e',
+          message: 'Registration could not be completed: $restErr',
         );
       }
     }
   }
 
-  Future<UserCredential?> _signUpViaRestFallback({
+  Future<UserCredential> _requireSignIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      return await _auth
+          .signInWithEmailAndPassword(email: email, password: password)
+          .timeout(_signInTimeout);
+    } on FirebaseAuthException {
+      rethrow;
+    } catch (e) {
+      final current = _auth.currentUser;
+      if (current != null) {
+        // Session already live — synthesize via re-auth attempt once more.
+        try {
+          return await _auth
+              .signInWithEmailAndPassword(email: email, password: password)
+              .timeout(_signInTimeout);
+        } catch (_) {}
+      }
+      throw FirebaseAuthException(
+        code: 'registration-failed',
+        message: 'Account exists but sign-in failed. Try Sign In. ($e)',
+      );
+    }
+  }
+
+  Future<UserCredential> _signUpViaRest({
     required String email,
     required String password,
     required SignUpProfile profile,
   }) async {
-    final apiKey = DefaultFirebaseOptions.web.apiKey;
+    final apiKey = _identityToolkitApiKey;
     final url = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey',
     );
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'returnSecureToken': true,
-      }),
-    );
+    final response = await http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': email,
+            'password': password,
+            'returnSecureToken': true,
+          }),
+        )
+        .timeout(_restTimeout);
 
     final Map<String, dynamic> body;
     try {
       body = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
-      throw Exception('Server returned an unexpected response. Please try again.');
+      throw FirebaseAuthException(
+        code: 'registration-failed',
+        message: 'Server returned an unexpected response. Please try again.',
+      );
     }
 
     if (response.statusCode != 200) {
@@ -204,52 +620,53 @@ class AuthRepository {
           message:
               'This email is already registered. Switch to Sign In and log in instead.',
         );
-      } else if (rawMsg.startsWith('WEAK_PASSWORD')) {
+      }
+      if (rawMsg.startsWith('WEAK_PASSWORD')) {
         throw FirebaseAuthException(
           code: 'weak-password',
           message: 'Password is too weak. Please use at least 6 characters.',
         );
-      } else if (rawMsg.startsWith('INVALID_EMAIL')) {
+      }
+      if (rawMsg.startsWith('INVALID_EMAIL')) {
         throw FirebaseAuthException(
           code: 'invalid-email',
           message: 'Please enter a valid email address.',
         );
-      } else if (rawMsg.startsWith('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+      }
+      if (rawMsg.startsWith('TOO_MANY_ATTEMPTS_TRY_LATER')) {
         throw FirebaseAuthException(
           code: 'too-many-requests',
           message: 'Too many attempts. Please try again later.',
         );
-      } else {
+      }
+      if (rawMsg.contains('OPERATION_NOT_ALLOWED')) {
         throw FirebaseAuthException(
-          code: 'registration-failed',
-          message: 'Registration failed: $rawMsg',
+          code: 'operation-not-allowed',
+          message:
+              'Email/password sign-up is disabled in Firebase Console.',
         );
       }
+      throw FirebaseAuthException(
+        code: 'registration-failed',
+        message: 'Registration failed: $rawMsg',
+      );
     }
 
     final uid = body['localId'] as String?;
     if (uid == null || uid.isEmpty) {
-      throw Exception('Account was created but no user session was returned.');
+      throw FirebaseAuthException(
+        code: 'registration-failed',
+        message: 'Account was created but no user id was returned.',
+      );
     }
 
     final displayName = profile.displayName.trim().isNotEmpty
         ? profile.displayName.trim()
         : UserProfile.emailPrefix(email);
 
-    // 1. Sign in to establish active session first (required by Firestore rules)
-    UserCredential? credential;
-    try {
-      credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } catch (_) {
-      // Continue if session is already active or interop failure occurs
-    }
+    final credential = await _requireSignIn(email: email, password: password);
+    final resolvedUid = credential.user?.uid ?? _auth.currentUser?.uid ?? uid;
 
-    final resolvedUid = credential?.user?.uid ?? _auth.currentUser?.uid ?? uid;
-
-    // 2. Then write trainee profile to Firestore
     try {
       await _createTraineeProfile(
         uid: resolvedUid,
@@ -261,31 +678,22 @@ class AuthRepository {
       // Continue — user is already authenticated
     }
 
-    if (credential != null) {
-      return credential;
-    }
-
-    try {
-      return await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } catch (_) {
-      return credential;
-    }
+    return credential;
   }
 
-  Future<UserCredential?> _createAccountAndProfile({
+  Future<UserCredential> _createAccountAndProfile({
     required String email,
     required String password,
     required SignUpProfile profile,
   }) async {
-    UserCredential? credential;
+    UserCredential credential;
     try {
-      credential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      credential = await _auth
+          .createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          )
+          .timeout(_authTimeout);
     } catch (createErr) {
       final current = _auth.currentUser;
       if (current != null && current.uid.isNotEmpty) {
@@ -302,33 +710,26 @@ class AuthRepository {
           );
         } catch (_) {}
 
-        try {
-          return await _auth.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-        } catch (_) {}
-        return credential;
+        return await _requireSignIn(email: email, password: password);
       }
-      rethrow;
+      if (createErr is FirebaseAuthException) rethrow;
+      throw FirebaseAuthException(
+        code: 'registration-failed',
+        message: 'Sign up failed: $createErr',
+      );
     }
 
-    String? uid;
-    try {
-      uid = credential.user?.uid;
-    } catch (_) {}
-    uid ??= _auth.currentUser?.uid;
-
+    final uid = credential.user?.uid ?? _auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
-      throw Exception('Account was created but no user session was returned.');
+      throw FirebaseAuthException(
+        code: 'registration-failed',
+        message: 'Account was created but no user session was returned.',
+      );
     }
 
     try {
-      final u = credential.user ?? _auth.currentUser;
-      await u?.getIdToken(true);
-    } catch (_) {
-      // Continue — Firestore may still accept the active session on web/iOS Safari.
-    }
+      await (credential.user ?? _auth.currentUser)?.getIdToken(true);
+    } catch (_) {}
 
     final displayName = profile.displayName.trim().isNotEmpty
         ? profile.displayName.trim()
@@ -354,34 +755,26 @@ class AuthRepository {
     required SignUpProfile profile,
   }) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      String? uid;
+      final credential = await _auth
+          .signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          )
+          .timeout(_signInTimeout);
+      final uid = credential.user?.uid ?? _auth.currentUser?.uid;
+      if (uid == null || uid.isEmpty) return null;
+
+      final displayName = profile.displayName.trim().isNotEmpty
+          ? profile.displayName.trim()
+          : UserProfile.emailPrefix(email);
       try {
-        uid = credential.user?.uid;
-      } catch (_) {}
-      uid ??= _auth.currentUser?.uid;
-
-      if (uid == null || uid.isEmpty) {
-        return null;
-      }
-
-      final doc = await _firestore.collection('users').doc(uid).get();
-      final hasProfile = doc.exists && doc.data() != null;
-
-      if (!hasProfile) {
-        final displayName = profile.displayName.trim().isNotEmpty
-            ? profile.displayName.trim()
-            : UserProfile.emailPrefix(email);
         await _createTraineeProfile(
           uid: uid,
           email: email,
           profile: profile,
           displayName: displayName,
         );
-      }
+      } catch (_) {}
       return credential;
     } catch (_) {
       return null;
@@ -424,6 +817,6 @@ class AuthRepository {
         'createdAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
-    );
+    ).timeout(_firestoreTimeout);
   }
 }

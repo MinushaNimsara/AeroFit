@@ -1,6 +1,7 @@
 import 'package:aerofit/app.dart';
-import 'package:aerofit/firebase_options.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:aerofit/core/firebase/firebase_bootstrap.dart';
+import 'package:aerofit/features/app_update/providers/app_update_providers.dart';
+import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,11 +11,6 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
-
-  // Keep the app portrait-only so it does not rotate against the phone lock.
-  await SystemChrome.setPreferredOrientations(const [
-    DeviceOrientation.portraitUp,
-  ]);
 
   if (kIsWeb) {
     ErrorWidget.builder = (details) {
@@ -32,29 +28,31 @@ Future<void> main() async {
         ),
       );
     };
+  } else {
+    // Native only — web orientation futures can hang and block first frame.
+    try {
+      await Future.any<void>([
+        SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.portraitUp,
+        ]),
+        Future<void>.delayed(const Duration(seconds: 2)),
+      ]);
+    } catch (_) {}
   }
 
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      if (kDebugMode) {
-        debugPrint(
-          'Firebase initialized: ${DefaultFirebaseOptions.web.projectId}',
-        );
-      }
-    }
-  } catch (e, stack) {
-    if (kDebugMode) {
-      debugPrint('Firebase initialization failed: $e');
-      debugPrint('$stack');
-    }
-  }
-
+  final container = ProviderContainer();
   runApp(
-    const ProviderScope(
-      child: AeroFitApp(),
+    UncontrolledProviderScope(
+      container: container,
+      child: const AeroFitApp(),
     ),
   );
+
+  await FirebaseBootstrap.ensureInitialized();
+  container.invalidate(authRepositoryProvider);
+  container.invalidate(authStateProvider);
+  // Let Firestore client finish wiring, then retry update check.
+  await Future<void>.delayed(const Duration(milliseconds: 1200));
+  container.invalidate(appUpdateRepositoryProvider);
+  container.invalidate(appUpdateStatusProvider);
 }

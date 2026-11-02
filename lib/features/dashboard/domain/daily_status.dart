@@ -57,4 +57,18 @@ class DailyStatus {
         gymExercisesTotal: 0,
         goalProgress: 0.62,
       );
+
+  /// Offline / empty start — still render a usable dashboard.
+  factory DailyStatus.empty({int calorieGoal = 2000}) => DailyStatus(
+        routineComplete: false,
+        dietOnTarget: false,
+        workoutComplete: false,
+        tasksCompleted: 0,
+        tasksTotal: 0,
+        caloriesConsumed: 0,
+        calorieGoal: calorieGoal > 0 ? calorieGoal : 2000,
+        gymExercisesCompleted: 0,
+        gymExercisesTotal: 0,
+        goalProgress: 0,
+      );
 }

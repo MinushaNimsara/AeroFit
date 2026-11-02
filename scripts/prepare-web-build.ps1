@@ -45,18 +45,21 @@ $indexHtml = $indexHtml -replace '<base href="[^"]*">', '<base href="$FLUTTER_BA
 
 Set-Content -Path $indexPath -Value $indexHtml -NoNewline
 
-# Optional meal-analysis key. Prefer an already-exported GEMINI_API_KEY env var;
-# never hardcode the key in this script or in source.
+# Optional meal-analysis key. Prefer secrets/dart_defines.json (gitignored),
+# then GEMINI_API_KEY env var. Never hardcode the key in this script.
 $geminiDefine = @()
-if (-not [string]::IsNullOrWhiteSpace($env:GEMINI_API_KEY)) {
+$definesFile = Join-Path $root "secrets\dart_defines.json"
+if (Test-Path -LiteralPath $definesFile) {
+  $geminiDefine += "--dart-define-from-file=$definesFile"
+  Write-Host "Building with secrets\dart_defines.json"
+} elseif (-not [string]::IsNullOrWhiteSpace($env:GEMINI_API_KEY)) {
   $geminiDefine += "--dart-define=GEMINI_API_KEY=$($env:GEMINI_API_KEY)"
   Write-Host "Building with GEMINI_API_KEY from environment."
+  if (-not [string]::IsNullOrWhiteSpace($env:GEMINI_MODEL)) {
+    $geminiDefine += "--dart-define=GEMINI_MODEL=$($env:GEMINI_MODEL)"
+  }
 } else {
-  Write-Host "WARNING: GEMINI_API_KEY not set - meal photo analysis will fail in this build."
-}
-
-if (-not [string]::IsNullOrWhiteSpace($env:GEMINI_MODEL)) {
-  $geminiDefine += "--dart-define=GEMINI_MODEL=$($env:GEMINI_MODEL)"
+  Write-Host "WARNING: no secrets\dart_defines.json or GEMINI_API_KEY - meal AI will fail."
 }
 
 flutter build web --release --base-href / --no-wasm-dry-run @geminiDefine

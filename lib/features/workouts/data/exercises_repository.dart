@@ -19,6 +19,14 @@ class ExercisesRepository {
 
   (DateTime, DateTime) get _todayRange => _dayRange(DateTime.now());
 
+  /// Prefer manual [GymExercise.sortOrder]; legacy docs (all 0) fall back to
+  /// oldest-first timestamp so the list stays stable until the user reorders.
+  static int compareBySortOrder(GymExercise a, GymExercise b) {
+    final byOrder = a.sortOrder.compareTo(b.sortOrder);
+    if (byOrder != 0) return byOrder;
+    return a.timestamp.compareTo(b.timestamp);
+  }
+
   Stream<List<GymExercise>> watchTodayExercises(String uid) {
     final (start, end) = _todayRange;
     return _exercisesRef(uid)
@@ -26,10 +34,12 @@ class ExercisesRepository {
         .where('timestamp', isLessThan: Timestamp.fromDate(end))
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(GymExercise.fromFirestore).toList(),
-        );
+        .map((snapshot) {
+          final exercises =
+              snapshot.docs.map(GymExercise.fromFirestore).toList();
+          exercises.sort(compareBySortOrder);
+          return exercises;
+        });
   }
 
   Stream<List<GymExercise>> watchExercisesForSplit(
@@ -42,9 +52,28 @@ class ExercisesRepository {
         .map((snapshot) {
           final exercises =
               snapshot.docs.map(GymExercise.fromFirestore).toList();
-          exercises.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          exercises.sort(compareBySortOrder);
           return exercises;
         });
+  }
+
+  Future<int> _nextSortOrder({
+    required String uid,
+    required String splitId,
+  }) async {
+    final snapshot =
+        await _exercisesRef(uid).where('splitId', isEqualTo: splitId).get();
+    var maxOrder = -1;
+    for (final doc in snapshot.docs) {
+      final raw = doc.data()['sortOrder'];
+      final order = raw is int
+          ? raw
+          : raw is num
+              ? raw.toInt()
+              : -1;
+      if (order > maxOrder) maxOrder = order;
+    }
+    return maxOrder + 1;
   }
 
   Future<void> addExercise({
@@ -59,6 +88,7 @@ class ExercisesRepository {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty || splitId.isEmpty) return;
 
+    final sortOrder = await _nextSortOrder(uid: uid, splitId: splitId);
     final doc = _exercisesRef(uid).doc();
     await doc.set({
       'id': doc.id,
@@ -67,6 +97,7 @@ class ExercisesRepository {
       'weightOrSetting': weightOrSetting.trim(),
       'notes': notes.trim(),
       'imageUrl': imageUrl,
+      'sortOrder': sortOrder,
       if (exerciseId != null && exerciseId.isNotEmpty) 'exerciseId': exerciseId,
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -75,6 +106,22 @@ class ExercisesRepository {
       {'lastWorkoutTimestamp': FieldValue.serverTimestamp()},
       SetOptions(merge: true),
     );
+  }
+
+  /// Persists list order as `sortOrder` 0..n-1 for [orderedIds].
+  Future<void> reorderExercises({
+    required String uid,
+    required List<String> orderedIds,
+  }) async {
+    if (orderedIds.isEmpty) return;
+
+    final batch = _firestore.batch();
+    for (var i = 0; i < orderedIds.length; i++) {
+      final id = orderedIds[i].trim();
+      if (id.isEmpty) continue;
+      batch.update(_exercisesRef(uid).doc(id), {'sortOrder': i});
+    }
+    await batch.commit();
   }
 
   Future<void> deleteExercise({

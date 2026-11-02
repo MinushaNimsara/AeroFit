@@ -1,0 +1,50 @@
+﻿back_001	Conventional Barbell Deadlift	conventional_barbell_deadlift
+back_002	Sumo Deadlift	sumo_deadlift
+back_003	Barbell Romanian Deadlift	barbell_romanian_deadlift
+back_004	Dumbbell Romanian Deadlift	dumbbell_romanian_deadlift
+back_005	Rack Pull	rack_pull
+back_006	Pull-Up	pull_up
+back_007	Chin-Up	chin_up
+back_008	Wide-Grip Pull-Up	wide_grip_pull_up
+back_009	Neutral-Grip Pull-Up	neutral_grip_pull_up
+back_010	Assisted Pull-Up (Machine)	assisted_pull_up_machine
+back_011	Lat Pulldown (Wide Grip)	lat_pulldown_wide_grip
+back_012	Lat Pulldown (Close Grip)	lat_pulldown_close_grip
+back_013	Lat Pulldown (Reverse Grip)	lat_pulldown_reverse_grip
+back_014	Single-Arm Lat Pulldown	single_arm_lat_pulldown
+back_015	Straight-Arm Pulldown	straight_arm_pulldown
+back_016	Barbell Bent-Over Row	barbell_bent_over_row
+back_017	Pendlay Row	pendlay_row
+back_018	T-Bar Row	t_bar_row
+back_019	Chest-Supported Row (Machine)	chest_supported_row_machine
+back_020	Seated Cable Row (Wide Grip)	seated_cable_row_wide_grip
+back_021	Seated Cable Row (Close Grip)	seated_cable_row_close_grip
+back_022	Single-Arm Seated Cable Row	single_arm_seated_cable_row
+back_023	Single-Arm Dumbbell Row	single_arm_dumbbell_row
+back_024	Two-Arm Dumbbell Row	two_arm_dumbbell_row
+back_025	Kroc Row	kroc_row
+back_026	Meadows Row	meadows_row
+back_027	Inverted Row (Bodyweight)	inverted_row
+back_028	Renegade Row	renegade_row
+back_029	Cable Face Pull	cable_face_pull
+back_030	Face Pull (Band)	face_pull_band
+back_031	Reverse Pec Deck Fly	reverse_pec_deck_fly
+back_032	Rear Delt Dumbbell Fly	rear_delt_dumbbell_fly
+back_033	Barbell Shrug	barbell_shrug
+back_034	Dumbbell Shrug	dumbbell_shrug
+back_035	Trap Bar Shrug	trap_bar_shrug
+back_036	Cable Shrug	cable_shrug
+back_037	Good Morning	good_morning
+back_038	Back Extension (Hyperextension)	back_extension
+back_039	Weighted Back Extension	weighted_back_extension
+back_040	Superman	superman
+back_041	Bird Dog	bird_dog
+back_042	Landmine Row	landmine_row
+back_043	Single-Arm Landmine Row	single_arm_landmine_row
+back_044	Cable Pullover	cable_pullover
+back_045	Dumbbell Pullover	dumbbell_pullover
+back_046	Seal Row	seal_row
+back_047	Yates Row	yates_row
+back_048	Machine Row (Chest-Supported, Iso-Lateral)	machine_row_iso_lateral
+back_049	Resistance Band Row	resistance_band_row
+back_050	TRX Row	trx_row

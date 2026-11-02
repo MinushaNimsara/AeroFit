@@ -17,6 +17,8 @@ class AuthSession {
 }
 
 AuthSession readAuthSession(Ref ref) {
+  // No Firebase (init timed out / failed) → treat as signed out so the
+  // router can leave splash/login gate and show the login screen.
   if (!FirebaseBootstrap.isReady) {
     return const AuthSession(isLoading: false, user: null);
   }

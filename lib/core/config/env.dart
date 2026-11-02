@@ -22,9 +22,9 @@ class Env {
     defaultValue: 2000,
   );
 
-  /// Must be supplied via `--dart-define=GEMINI_API_KEY=...` at build/run
-  /// time — never hardcode a real key here (it would ship inside the
-  /// compiled JS/APK and get flagged by GitHub secret scanning).
+  /// Spark (free) plan: pass via `--dart-define=GEMINI_API_KEY=...` at run/build.
+  /// Do not commit a real key. After upgrading to Blaze, prefer Cloud Function
+  /// `analyzeMeal` + Secret Manager and leave this empty in production builds.
   static const geminiApiKey = String.fromEnvironment(
     'GEMINI_API_KEY',
     defaultValue: '',
@@ -33,5 +33,13 @@ class Env {
   static const geminiModel = String.fromEnvironment(
     'GEMINI_MODEL',
     defaultValue: 'gemini-flash-latest',
+  );
+
+  /// Spark-first default: call Gemini from the app.
+  /// Set `--dart-define=USE_MEAL_CLOUD_FUNCTION=true` only after Blaze +
+  /// `analyzeMeal` is deployed.
+  static const useMealCloudFunction = bool.fromEnvironment(
+    'USE_MEAL_CLOUD_FUNCTION',
+    defaultValue: false,
   );
 }

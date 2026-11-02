@@ -18,7 +18,16 @@ final workoutSplitsStreamProvider = StreamProvider<List<WorkoutSplit>>((ref) {
     return Stream.value(const []);
   }
 
-  return repo.watchSplits(auth.uid);
+  // Offline / unavailable Firestore must yield [] — never AsyncError.
+  return Stream<List<WorkoutSplit>>.multi((controller) {
+    final sub = repo.watchSplits(auth.uid).listen(
+      controller.add,
+      onError: (_) {
+        if (!controller.isClosed) controller.add(const []);
+      },
+    );
+    controller.onCancel = sub.cancel;
+  });
 });
 
 /// User's explicit split choice (persisted for dashboard + gym screen).

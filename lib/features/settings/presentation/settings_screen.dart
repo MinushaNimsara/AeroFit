@@ -1,8 +1,10 @@
 import 'package:aerofit/core/theme/app_theme.dart';
+import 'package:aerofit/features/app_update/providers/app_update_providers.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/enrollment/presentation/widgets/gym_pass_card.dart';
 import 'package:aerofit/features/settings/presentation/widgets/report_issue_dialog.dart';
 import 'package:aerofit/features/settings/providers/settings_providers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +19,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isResettingPassword = false;
   bool _isLoggingOut = false;
+  bool _isCheckingUpdate = false;
 
   Future<void> _resetPassword() async {
     setState(() => _isResettingPassword = true);
@@ -49,6 +52,70 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
     } finally {
       if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('In-app updates are Android-only.')),
+      );
+      return;
+    }
+    if (_isCheckingUpdate) return;
+
+    setState(() => _isCheckingUpdate = true);
+    try {
+      await ref.read(appUpdatePrefsProvider).clearSkipped();
+      ref.read(appUpdateFailCountProvider.notifier).state = 0;
+      ref.read(appUpdateCheckNonceProvider.notifier).state++;
+      ref.invalidate(appUpdateStatusProvider);
+      final status = await ref.read(appUpdateStatusProvider.future);
+      if (!mounted) return;
+
+      if (status == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not check for updates.')),
+        );
+        return;
+      }
+      if (status.checkFailed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Update check failed. Check your connection and try again.',
+            ),
+          ),
+        );
+        return;
+      }
+      if (status.needsUpdate) {
+        // AppUpdateGate overlay handles the popup.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Update ${status.config?.latestVersionName ?? ''} available.',
+            ),
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You\'re on the latest version '
+            '(${status.localVersionName}+${status.localVersionCode}).',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update check failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isCheckingUpdate = false);
     }
   }
 
@@ -172,6 +239,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     )
                   : const Icon(Icons.logout_rounded),
               label: Text(_isLoggingOut ? 'Signing out…' : 'Logout'),
+            ),
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: _isCheckingUpdate ? null : _checkForUpdates,
+              child: _isCheckingUpdate
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Check for updates'),
+            ),
+            const SizedBox(height: 8),
+            Consumer(
+              builder: (context, ref, _) {
+                final info = ref.watch(packageInfoProvider);
+                return info.when(
+                  data: (p) => InkWell(
+                    onTap: _isCheckingUpdate ? null : _checkForUpdates,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        'Version ${p.version}+${p.buildNumber}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
+                    ),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                );
+              },
             ),
           ],
         ),

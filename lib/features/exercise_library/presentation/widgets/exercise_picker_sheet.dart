@@ -1,5 +1,6 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/exercise_library/domain/exercise.dart';
+import 'package:aerofit/features/exercise_library/domain/exercise_search.dart';
 import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_list_card.dart';
 import 'package:aerofit/features/exercise_library/providers/exercise_library_providers.dart';
 import 'package:flutter/material.dart';
@@ -144,16 +145,12 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                     ),
                   ),
                   data: (all) {
-                    final query = _query.trim().toLowerCase();
+                    final query = _query;
                     final filtered = all.where((exercise) {
                       if (_category != null && exercise.category != _category) {
                         return false;
                       }
-                      if (query.isEmpty) return true;
-                      return exercise.name.toLowerCase().contains(query) ||
-                          exercise.primaryMuscle.toLowerCase().contains(query) ||
-                          exercise.equipment
-                              .any((eq) => eq.toLowerCase().contains(query));
+                      return ExerciseSearch.matches(exercise, query);
                     }).toList(growable: false);
 
                     if (filtered.isEmpty) {

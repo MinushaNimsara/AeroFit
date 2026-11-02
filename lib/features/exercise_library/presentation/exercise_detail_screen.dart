@@ -1,6 +1,6 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/exercise_library/domain/exercise.dart';
-import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_category_visual.dart';
+import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_demo_stage.dart';
 import 'package:aerofit/features/exercise_library/providers/exercise_library_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,32 +63,27 @@ class _ExerciseDetailBody extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ExerciseCategoryIcon(category: exercise.category, size: 60),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        exercise.name,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${exercise.category} · ${exercise.primaryMuscle}',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
-                    ],
+            ExerciseDemoStage(
+              assetPath: exercise.image,
+              exerciseId: exercise.id,
+              category: exercise.category,
+              square: true,
+              maxSquareExtent: 420,
+              borderRadius: 18,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              exercise.name,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
-                ),
-              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${exercise.category} · ${exercise.primaryMuscle}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
             ),
             const SizedBox(height: 16),
             Wrap(

@@ -1,7 +1,7 @@
 name: aerofit
 description: Personal lifestyle & fitness tracking — PWA-first Flutter app with Firebase.
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.8+9
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
@@ -15,6 +15,7 @@ dependencies:
   firebase_core: ^3.15.2
   firebase_auth: ^5.7.0
   cloud_firestore: ^5.6.12
+  cloud_functions: ^5.6.2
   firebase_storage: ^12.3.7
   fl_chart: ^0.69.2
   intl: ^0.19.0
@@ -26,14 +27,55 @@ dependencies:
   uuid: ^4.5.1
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.2.0
+  google_sign_in: 6.2.2
+  package_info_plus: ^8.3.0
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/app_icon_source.png
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: assets/images/app_icon_source.png
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#000000"
+  # Transparent square mark — opaque navy app_icon_source.png showed as a box on #000.
+  image: assets/images/splash_logo.png
+  android: true
+  ios: true
+  android_12:
+    color: "#000000"
+    image: assets/images/splash_logo.png
+    # Match screen; avoid light circular disc behind the icon.
+    icon_background_color: "#000000"
+  web: false
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
     - assets/data/exercises/
+    - assets/exercises/images/chest/
+    - assets/exercises/images/back/
+    - assets/exercises/images/biceps/
+    - assets/exercises/images/triceps/
+    - assets/exercises/images/shoulders/
+    - assets/exercises/images/legs/
+    - assets/exercises/images/core/
+    - assets/exercises/images/forearms/
+    - assets/exercises/images/cardio/
+    - assets/exercises/images/full_body/
+    - assets/exercises/images/calisthenics/
+    - assets/exercises/images/mobility/
+    - assets/exercises/images/athletic/

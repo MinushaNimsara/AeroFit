@@ -7,7 +7,6 @@ import 'package:aerofit/features/dashboard/presentation/widgets/remaining_tasks_
 import 'package:aerofit/features/dashboard/presentation/widgets/status_pill_row.dart';
 import 'package:aerofit/features/dashboard/providers/dashboard_providers.dart';
 import 'package:aerofit/features/enrollment/presentation/widgets/gym_membership_banner.dart';
-import 'package:aerofit/features/enrollment/presentation/widgets/gym_pass_card.dart';
 import 'package:aerofit/features/meals/providers/meals_providers.dart';
 import 'package:aerofit/features/routine/providers/tasks_providers.dart';
 import 'package:aerofit/features/workouts/providers/exercises_providers.dart';
@@ -46,8 +45,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           loading: () => const Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           ),
-          error: (e, _) => Center(
-            child: Text('Could not load dashboard: $e'),
+          error: (e, _) => _DashboardBody(
+            displayName: displayName,
+            dateLabel: dateLabel,
+            status: DailyStatus.empty(),
+            offlineHint: true,
+            onRefresh: () async {
+              ref.invalidate(tasksStreamProvider);
+              ref.invalidate(todayMealsStreamProvider);
+              ref.invalidate(todayExercisesStreamProvider);
+              ref.invalidate(dailyStatusProvider);
+            },
           ),
           data: (status) => _DashboardBody(
             displayName: displayName,
@@ -72,12 +80,14 @@ class _DashboardBody extends StatelessWidget {
     required this.dateLabel,
     required this.status,
     required this.onRefresh,
+    this.offlineHint = false,
   });
 
   final String displayName;
   final String dateLabel;
   final DailyStatus status;
   final Future<void> Function() onRefresh;
+  final bool offlineHint;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +103,28 @@ class _DashboardBody extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                if (offlineHint) ...[
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cloud sync is offline. Showing a local dashboard — pull down to retry when internet is back.',
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
                 Text(
                   dateLabel,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -124,13 +156,10 @@ class _DashboardBody extends StatelessWidget {
                     .animate()
                     .fadeIn(delay: 140.ms, duration: 400.ms),
                 const SizedBox(height: 20),
+                // Gym Pass QR lives in Settings only — Hub shows join CTA banner.
                 const GymMembershipBanner()
                     .animate()
                     .fadeIn(delay: 160.ms, duration: 450.ms),
-                const SizedBox(height: 16),
-                const GymPassCard()
-                    .animate()
-                    .fadeIn(delay: 180.ms, duration: 450.ms),
                 const SizedBox(height: 24),
                 DailyWinLossBanner(
                   isWin: status.isDailyWin,

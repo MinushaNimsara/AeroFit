@@ -28,11 +28,46 @@
       padding: 0;
       width: 100%;
       height: 100%;
+      overflow: hidden;
       background: #0D0F14;
+    }
+    flutter-view {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    flt-glass-pane {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: block !important;
     }
   </style>
 </head>
 <body>
+  <div id="af-boot" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0D0F14;color:#9AA4B2;font:600 16px/1.4 system-ui,sans-serif;z-index:0;">
+    Loading AeroFit…
+  </div>
+  <script>
+    // Hide HTML boot splash once Flutter attaches a view.
+    (function () {
+      var hide = function () {
+        var el = document.getElementById('af-boot');
+        if (el) el.style.display = 'none';
+      };
+      var t = setInterval(function () {
+        if (document.querySelector('flutter-view') || document.querySelector('flt-glass-pane')) {
+          clearInterval(t);
+          // Keep visible briefly so a black Flutter canvas is obvious vs HTML splash.
+          setTimeout(hide, 2500);
+        }
+      }, 100);
+      setTimeout(function () { clearInterval(t); }, 20000);
+    })();
+  </script>
   <script>
     (function () {
       try {
@@ -51,61 +86,18 @@
           if (!document.hidden) lockPortrait();
         });
 
-        // 1. Prevent TypeError on exception.customData in firebase_auth_web:
-        // FirebaseError sets `this.customData = customData;` which is undefined for most errors.
-        // In Dart, `exception.customData` is declared as non-nullable JSAny, so Dart does `t.e.a(a.customData)`.
-        // If customData is undefined or null, Dart throws TypeError: type 'minified:IV' is not a subtype of type 'minified:c2'.
-        // Intercepting customData with a getter/setter ensures customData is ALWAYS a valid object {}.
+        // 1. customData only on Error.prototype — NEVER Object.prototype.
+        // Polluting Object.prototype breaks CanvasKit (empty flt-glass-pane / black screen).
         try {
-          var _defineSafeCustomData = function(proto) {
-            Object.defineProperty(proto, 'customData', {
-              get: function() { return this._safeCustomData || {}; },
-              set: function(v) { this._safeCustomData = v || {}; },
-              configurable: true,
-              enumerable: true
-            });
-          };
-          _defineSafeCustomData(Error.prototype);
-          _defineSafeCustomData(Object.prototype);
+          Object.defineProperty(Error.prototype, 'customData', {
+            get: function() { return this._safeCustomData || {}; },
+            set: function(v) { this._safeCustomData = v || {}; },
+            configurable: true,
+            enumerable: false
+          });
         } catch (_) {}
 
-        // 2. Fallbacks on Object.prototype for Safari/WebKit missing properties:
-        try {
-          if (!('metadata' in Object.prototype)) {
-            var _defaultMetadata = {
-              creationTime: new Date().toUTCString(),
-              lastSignInTime: new Date().toUTCString()
-            };
-            Object.defineProperty(Object.prototype, 'metadata', {
-              get: function() { return _defaultMetadata; },
-              configurable: true,
-              enumerable: false
-            });
-          }
-          if (!('creationTime' in Object.prototype)) {
-            Object.defineProperty(Object.prototype, 'creationTime', {
-              get: function() { return new Date().toUTCString(); },
-              configurable: true,
-              enumerable: false
-            });
-          }
-          if (!('lastSignInTime' in Object.prototype)) {
-            Object.defineProperty(Object.prototype, 'lastSignInTime', {
-              get: function() { return new Date().toUTCString(); },
-              configurable: true,
-              enumerable: false
-            });
-          }
-          if (!('providerData' in Object.prototype)) {
-            Object.defineProperty(Object.prototype, 'providerData', {
-              get: function() { return []; },
-              configurable: true,
-              enumerable: false
-            });
-          }
-        } catch (_) {}
-
-        // 3. Safari Date.parse safety patch:
+        // 2. Safari Date.parse safety patch:
         // Safari returns NaN for non-ISO or empty/null date strings in Date.parse().
         // When firebase_auth_web converts creationTime / lastSignInTime with Date.parse(),
         // receiving NaN causes Dart's toDartInt to throw a TypeError ('Null check operator').
@@ -272,6 +264,6 @@
   </script>
 
   <!-- Official Flutter web bootstrap (flutter.js + buildConfig + loader.load). -->
-  <script src="flutter_bootstrap_v9.js" async></script>
+  <script src="flutter_bootstrap_v10.js" async></script>
 </body>
 </html>
