@@ -104,11 +104,11 @@ class _CoachTraineeRosterState extends ConsumerState<CoachTraineeRoster> {
                 fillColor: AppColors.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF252B38)),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF252B38)),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -141,7 +141,7 @@ class _CoachTraineeRosterState extends ConsumerState<CoachTraineeRoster> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF252B38)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   'No trainees enrolled yet. Scan Gym Pass QR codes from Coach Settings.',
@@ -157,7 +157,7 @@ class _CoachTraineeRosterState extends ConsumerState<CoachTraineeRoster> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF252B38)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   'No trainees match "${searchQuery.trim()}".',
@@ -210,17 +210,17 @@ class _TraineeListTile extends StatelessWidget {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.tileBr,
         side: BorderSide(
           color: member.isWorkingOut
               ? AppColors.win.withValues(alpha: 0.45)
-              : const Color(0xFF252B38),
+              : AppColors.border,
         ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadii.tileBr,
           onTap: () => showTraineeProfileSheet(
             context,
             member.uid,

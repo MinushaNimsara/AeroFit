@@ -14,6 +14,7 @@ import 'package:aerofit/features/workouts/presentation/widgets/add_exercise_shee
 import 'package:aerofit/features/workouts/presentation/widgets/workout_splits_header.dart';
 import 'package:aerofit/features/workouts/providers/exercises_providers.dart';
 import 'package:aerofit/features/workouts/providers/workout_splits_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,7 +63,8 @@ class WorkoutsScreen extends ConsumerWidget {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadii.pillBr,
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
                     '${progress.$1}/${progress.$2}',
@@ -94,9 +96,6 @@ class WorkoutsScreen extends ConsumerWidget {
               splitId: selectedSplitId,
               splits: splits,
             ),
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.background,
-            elevation: 2,
             icon: const Icon(Icons.add_rounded),
             label: const Text('Add Exercise'),
           );
@@ -137,7 +136,9 @@ class WorkoutsScreen extends ConsumerWidget {
                   ),
                   data: (exercises) {
                     final splits = splitsAsync.valueOrNull;
-                    if (splits == null || splits.isEmpty || selectedSplitId == null) {
+                    if (splits == null ||
+                        splits.isEmpty ||
+                        selectedSplitId == null) {
                       return const SizedBox.shrink();
                     }
                     return _GymBody(
@@ -226,22 +227,41 @@ class _StartWorkoutBanner extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(14),
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            (inSession ? AppColors.accent : AppColors.primary)
+                .withValues(alpha: 0.14),
+            AppColors.surface,
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              inSession ? 'Session in progress' : 'Ready to train?',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+            Row(
+              children: [
+                IconChip(
+                  icon: inSession
+                      ? Icons.timer_rounded
+                      : Icons.local_fire_department_rounded,
+                  color: inSession ? AppColors.accent : AppColors.primary,
+                  size: 28,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    inSession ? 'Session in progress' : 'Ready to train?',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               inSession
                   ? 'Current: ${liveStatus?.activeExerciseLabel ?? splitName}'
@@ -260,10 +280,9 @@ class _StartWorkoutBanner extends ConsumerWidget {
                     MaterialPageRoute<void>(
                       builder: (_) => LiveWorkoutSessionScreen(
                         exercises: exercises,
-                        scheduleName:
-                            liveStatus!.routineDisplayName.isNotEmpty
-                                ? liveStatus.routineDisplayName
-                                : splitName,
+                        scheduleName: liveStatus!.routineDisplayName.isNotEmpty
+                            ? liveStatus.routineDisplayName
+                            : splitName,
                       ),
                     ),
                   );
@@ -315,7 +334,7 @@ class _GymBody extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF252B38)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Icon(
                   Icons.fitness_center_rounded,
@@ -358,7 +377,7 @@ class _GymBody extends StatelessWidget {
             return Material(
               elevation: 1 + 4 * t,
               color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadii.tileBr,
               child: child,
             );
           },
@@ -378,7 +397,8 @@ class _GymBody extends StatelessWidget {
         final exercise = exercises[index];
         return Padding(
           key: ValueKey(exercise.id),
-          padding: EdgeInsets.only(bottom: index == exercises.length - 1 ? 0 : 6),
+          padding:
+              EdgeInsets.only(bottom: index == exercises.length - 1 ? 0 : 6),
           child: _ExerciseCard(
             index: index,
             exercise: exercise,
@@ -425,9 +445,10 @@ class _ExerciseCard extends ConsumerWidget {
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
           color: AppColors.danger.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.tileBr,
         ),
-        child: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+        child:
+            const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
       ),
       onDismissed: (_) => onDelete(),
       child: AnimatedOpacity(
@@ -435,19 +456,19 @@ class _ExerciseCard extends ConsumerWidget {
         opacity: done ? 0.55 : 1,
         child: Material(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadii.tileBr,
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadii.tileBr,
             onTap: exerciseId == null || exerciseId.isEmpty
                 ? null
                 : () => context.push('/workouts/exercise/$exerciseId'),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadii.tileBr,
                 border: Border.all(
                   color: done
                       ? AppColors.win.withValues(alpha: 0.35)
-                      : AppColors.surfaceElevated,
+                      : AppColors.border,
                 ),
               ),
               child: Padding(
@@ -482,9 +503,8 @@ class _ExerciseCard extends ConsumerWidget {
                                 .titleSmall
                                 ?.copyWith(
                                   fontWeight: FontWeight.w600,
-                                  decoration: done
-                                      ? TextDecoration.lineThrough
-                                      : null,
+                                  decoration:
+                                      done ? TextDecoration.lineThrough : null,
                                   color: done
                                       ? AppColors.textSecondary
                                       : AppColors.textPrimary,
@@ -596,7 +616,7 @@ class _ExerciseThumbnail extends StatelessWidget {
       exerciseId: exerciseId,
       width: size,
       height: size,
-      borderRadius: 10,
+      borderRadius: 14,
       fit: BoxFit.contain,
     );
   }

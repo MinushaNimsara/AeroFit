@@ -50,12 +50,11 @@ class _AssignRoutineDialogState extends ConsumerState<AssignRoutineDialog> {
 
     setState(() => _assigning = true);
     try {
-      final routineName = await ref
-          .read(coachRoutineControllerProvider)
-          .assignRoutineToTrainee(
-            traineeUid: widget.traineeUid,
-            templateId: templateId,
-          );
+      final routineName =
+          await ref.read(coachRoutineControllerProvider).assignRoutineToTrainee(
+                traineeUid: widget.traineeUid,
+                templateId: templateId,
+              );
 
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -86,7 +85,7 @@ class _AssignRoutineDialogState extends ConsumerState<AssignRoutineDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerSurface,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -103,7 +102,7 @@ class _AssignRoutineDialogState extends ConsumerState<AssignRoutineDialog> {
     return AlertDialog(
       backgroundColor: AppColors.surfaceElevated,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.tileBr,
         side: BorderSide(color: AppColors.primary.withValues(alpha: 0.35)),
       ),
       title: Row(
@@ -162,7 +161,7 @@ class _AssignRoutineDialogState extends ConsumerState<AssignRoutineDialog> {
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF252B38)),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -202,7 +201,8 @@ class _AssignRoutineDialogState extends ConsumerState<AssignRoutineDialog> {
                           .toList(),
                       onChanged: _assigning
                           ? null
-                          : (value) => setState(() => _selectedTemplateId = value),
+                          : (value) =>
+                              setState(() => _selectedTemplateId = value),
                     ),
                   ),
                 ),

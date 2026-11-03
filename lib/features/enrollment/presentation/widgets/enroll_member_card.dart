@@ -12,7 +12,7 @@ class EnrollMemberCard extends StatelessWidget {
       color: AppColors.surfaceElevated,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadii.tileBr,
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -32,7 +32,7 @@ class EnrollMemberCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppRadii.tileBr,
                   ),
                   child: const Icon(
                     Icons.qr_code_scanner_rounded,
@@ -47,10 +47,9 @@ class EnrollMemberCard extends StatelessWidget {
                     children: [
                       Text(
                         'Scan & Enroll Member',
-                        style:
-                            Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
                       const SizedBox(height: 4),
                       Text(

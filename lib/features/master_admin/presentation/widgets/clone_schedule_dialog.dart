@@ -14,9 +14,8 @@ Future<void> showCloneScheduleDialog({
 }) async {
   final registry =
       ref.read(coachRegistryStreamProvider).valueOrNull ?? const [];
-  final destinations = registry
-      .where((gym) => gym.uid != sourceGym.uid)
-      .toList();
+  final destinations =
+      registry.where((gym) => gym.uid != sourceGym.uid).toList();
 
   if (destinations.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -96,7 +95,7 @@ Future<void> showCloneScheduleDialog({
                             SnackBar(
                               content: Text(cloneState.message!),
                               behavior: SnackBarBehavior.floating,
-                              backgroundColor: AppColors.win,
+                              backgroundColor: AppColors.winSurface,
                             ),
                           );
                         } else if (cloneState.message != null) {
@@ -104,7 +103,7 @@ Future<void> showCloneScheduleDialog({
                             SnackBar(
                               content: Text(cloneState.message!),
                               behavior: SnackBarBehavior.floating,
-                              backgroundColor: AppColors.danger,
+                              backgroundColor: AppColors.dangerSurface,
                             ),
                           );
                         }

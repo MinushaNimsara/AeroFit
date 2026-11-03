@@ -73,8 +73,8 @@ class _ReportIssueDialogState extends State<_ReportIssueDialog> {
     return AlertDialog(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF252B38)),
+        borderRadius: AppRadii.tileBr,
+        side: const BorderSide(color: AppColors.border),
       ),
       title: const Text('Report an Issue'),
       content: Form(

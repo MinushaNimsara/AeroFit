@@ -25,15 +25,15 @@ class ExerciseListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppRadii.tileBr,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.tileBr,
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF252B38)),
+            borderRadius: AppRadii.tileBr,
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,

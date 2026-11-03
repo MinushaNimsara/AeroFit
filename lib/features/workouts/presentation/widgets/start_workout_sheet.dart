@@ -41,8 +41,7 @@ class _StartWorkoutSheetState extends ConsumerState<_StartWorkoutSheet> {
       final repo = ref.read(exercisesRepositoryProvider);
       if (uid == null || repo == null) return;
 
-      final exercises =
-          await repo.watchExercisesForSplit(uid, splitId).first;
+      final exercises = await repo.watchExercisesForSplit(uid, splitId).first;
 
       if (exercises.isEmpty) {
         if (!mounted) return;
@@ -94,11 +93,11 @@ class _StartWorkoutSheetState extends ConsumerState<_StartWorkoutSheet> {
         return Container(
           decoration: const BoxDecoration(
             color: AppColors.surfaceElevated,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(
-              top: BorderSide(color: Color(0xFF252B38)),
-              left: BorderSide(color: Color(0xFF252B38)),
-              right: BorderSide(color: Color(0xFF252B38)),
+              top: BorderSide(color: AppColors.border),
+              left: BorderSide(color: AppColors.border),
+              right: BorderSide(color: AppColors.border),
             ),
           ),
           child: splitsAsync.when(
@@ -157,7 +156,7 @@ class _StartWorkoutSheetState extends ConsumerState<_StartWorkoutSheet> {
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: AppRadii.tileBr,
                           onTap: () =>
                               setState(() => _selectedSplitId = split.id),
                           child: Container(
@@ -166,11 +165,11 @@ class _StartWorkoutSheetState extends ConsumerState<_StartWorkoutSheet> {
                               color: _selectedSplitId == split.id
                                   ? AppColors.primary.withValues(alpha: 0.12)
                                   : AppColors.surface,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: AppRadii.tileBr,
                               border: Border.all(
                                 color: _selectedSplitId == split.id
                                     ? AppColors.primary.withValues(alpha: 0.55)
-                                    : const Color(0xFF252B38),
+                                    : AppColors.border,
                               ),
                             ),
                             child: Row(

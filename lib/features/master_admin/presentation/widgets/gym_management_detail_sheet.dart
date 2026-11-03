@@ -72,12 +72,12 @@ class _GymManagementDetailSheetState
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF10141F),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(
-          top: BorderSide(color: Color(0xFF2A3142)),
-          left: BorderSide(color: Color(0xFF2A3142)),
-          right: BorderSide(color: Color(0xFF2A3142)),
+          top: BorderSide(color: AppColors.borderStrong),
+          left: BorderSide(color: AppColors.borderStrong),
+          right: BorderSide(color: AppColors.borderStrong),
         ),
       ),
       child: Column(
@@ -172,7 +172,7 @@ class _GymMetricStrip extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.tileBr,
         border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
       ),
       child: Row(
@@ -254,7 +254,7 @@ class _TraineesTab extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF252B38)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   'No trainees are linked to this gym yet. Trainees need `gymName` set to "${gymName.trim()}".',
@@ -295,7 +295,7 @@ class _TraineesTab extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF252B38)),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,9 +316,10 @@ class _TraineesTab extends ConsumerWidget {
                             value: trainee.progress.clamp(0.0, 1.0),
                             minHeight: 8,
                             backgroundColor: AppColors.ringTrack,
-                            color: trainee.caloriesConsumed > trainee.calorieGoal
-                                ? AppColors.danger
-                                : AppColors.accent,
+                            color:
+                                trainee.caloriesConsumed > trainee.calorieGoal
+                                    ? AppColors.danger
+                                    : AppColors.accent,
                           ),
                         ),
                       ),
@@ -390,7 +391,7 @@ class _SchedulesTab extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF252B38)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   'This coach has not created any workout schedules yet.',
@@ -450,7 +451,7 @@ class _ScheduleCard extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.tileBr,
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
       child: Column(

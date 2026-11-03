@@ -7,5 +7,10 @@ service firebase.storage {
     match /users/{userId}/meal_images/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    // Release APKs for sideload in-app update — upload via Console only.
+    match /app_releases/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
   }
 }

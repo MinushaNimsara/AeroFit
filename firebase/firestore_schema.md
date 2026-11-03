@@ -2,6 +2,22 @@
 
 All user data lives under `users/{uid}/…` subcollections.
 
+## `config/app_version` (sideload in-app update)
+
+Single document. Clients read when signed in; writes only via Console / Admin SDK.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `latestVersionCode` | int | Must match `pubspec` `+N` of the published APK |
+| `latestVersionName` | string | e.g. `1.0.2` |
+| `apkUrl` | string | Public HTTPS URL to the APK (required; Spark path — no Storage) |
+| `apkStoragePath` | string? | Legacy/optional Firebase Storage path (needs Blaze) |
+| `forceUpdate` | bool | Non-dismissible update dialog |
+| `minVersionCode` | int | Local builds below this are treated as forced |
+| `releaseNotes` | string? | Shown in the update dialog |
+
+See [`docs/APP_UPDATE_PUBLISH.md`](../docs/APP_UPDATE_PUBLISH.md) for release steps.
+
 **Exercise library (not Firestore):** the 729-exercise reference catalog
 (name, muscles, equipment, instructions, tips, safety notes, etc.) is bundled
 as static JSON assets at `assets/data/exercises/*.json` and loaded in-memory

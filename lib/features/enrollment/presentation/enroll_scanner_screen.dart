@@ -44,7 +44,7 @@ class _EnrollScannerScreenState extends ConsumerState<EnrollScannerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(state.message ?? 'Enrollment failed.'),
-          backgroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerSurface,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -58,7 +58,8 @@ class _EnrollScannerScreenState extends ConsumerState<EnrollScannerScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.surfaceElevated,
-        icon: const Icon(Icons.verified_rounded, color: AppColors.win, size: 48),
+        icon:
+            const Icon(Icons.verified_rounded, color: AppColors.win, size: 48),
         title: const Text('Member Enrolled'),
         content: Text(
           state.message ??

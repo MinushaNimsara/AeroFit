@@ -164,9 +164,12 @@ class _UpdateCardState extends ConsumerState<_UpdateCard> {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 400),
       child: Material(
-        color: AppColors.surfaceElevated,
+        color: AppColors.surface,
         elevation: 8,
-        borderRadius: BorderRadius.circular(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadii.cardBr,
+          side: const BorderSide(color: AppColors.border),
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
           child: Column(
@@ -202,7 +205,8 @@ class _UpdateCardState extends ConsumerState<_UpdateCard> {
                 LinearProgressIndicator(
                   value: _progress <= 0 ? null : _progress.clamp(0.0, 1.0),
                   color: AppColors.primary,
-                  backgroundColor: AppColors.surface,
+                  backgroundColor: AppColors.surfaceHighest,
+                  borderRadius: AppRadii.pillBr,
                 ),
                 const SizedBox(height: 8),
                 Text(

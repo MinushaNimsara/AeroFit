@@ -70,7 +70,8 @@ class _SetTraineeCaloriesDialogState
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Target calories set to $value for ${widget.traineeName}'),
+          content:
+              Text('Target calories set to $value for ${widget.traineeName}'),
           backgroundColor: AppColors.surfaceElevated,
         ),
       );
@@ -79,7 +80,7 @@ class _SetTraineeCaloriesDialogState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not save: $e'),
-          backgroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerSurface,
         ),
       );
     } finally {

@@ -19,7 +19,7 @@ class CoachRegistryPanel extends ConsumerWidget {
       color: AppColors.surfaceElevated,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadii.tileBr,
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -53,10 +53,9 @@ class CoachRegistryPanel extends ConsumerWidget {
                     children: [
                       Text(
                         'Registered Network Registry',
-                        style:
-                            Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -100,7 +99,7 @@ class _EmptyRegistry extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF252B38)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -151,7 +150,8 @@ class _RegistryTable extends ConsumerWidget {
                   entry: entry,
                   dateFormat: dateFormat,
                   isWide: true,
-                  onOpen: () => showGymManagementDetailSheet(context, ref, entry),
+                  onOpen: () =>
+                      showGymManagementDetailSheet(context, ref, entry),
                   onEdit: () => showEditCoachDialog(context, ref, entry),
                 ),
               ),
@@ -224,9 +224,8 @@ class _RegistryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final createdLabel = entry.createdAt != null
-        ? dateFormat.format(entry.createdAt!)
-        : '—';
+    final createdLabel =
+        entry.createdAt != null ? dateFormat.format(entry.createdAt!) : '—';
 
     if (!isWide) {
       return Material(
@@ -239,7 +238,7 @@ class _RegistryRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF252B38)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,7 +292,7 @@ class _RegistryRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF252B38)),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: [
@@ -357,7 +356,8 @@ class _EditCoachButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.edit_rounded, color: AppColors.primary, size: 18),
+              const Icon(Icons.edit_rounded,
+                  color: AppColors.primary, size: 18),
               const SizedBox(width: 6),
               Text(
                 'Edit',

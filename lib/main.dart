@@ -1,5 +1,6 @@
 import 'package:aerofit/app.dart';
 import 'package:aerofit/core/firebase/firebase_bootstrap.dart';
+import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/app_update/providers/app_update_providers.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:flutter/foundation.dart';
@@ -15,14 +16,14 @@ Future<void> main() async {
   if (kIsWeb) {
     ErrorWidget.builder = (details) {
       return Material(
-        color: const Color(0xFF0D0F14),
+        color: AppColors.background,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
               details.exceptionAsString(),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFFFF6B6B)),
+              style: const TextStyle(color: AppColors.danger),
             ),
           ),
         ),

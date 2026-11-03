@@ -4,6 +4,7 @@ import 'package:aerofit/features/auth/domain/activity_level.dart';
 import 'package:aerofit/features/auth/domain/gender.dart';
 import 'package:aerofit/features/auth/domain/sign_up_profile.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -87,7 +88,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (FirebaseAuth.instance.currentUser != null) return;
       final msg = switch (e.code) {
         'user-not-found' => 'No account found with this email.',
-        'wrong-password' || 'invalid-credential' =>
+        'wrong-password' ||
+        'invalid-credential' =>
           'Incorrect email or password.',
         'invalid-email' => 'Enter a valid email address.',
         'user-disabled' => 'This account has been disabled.',
@@ -144,17 +146,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           'Network error. Check your internet connection.',
         'missing-id-token' =>
           e.message ?? 'Google Sign-In misconfigured (missing ID token / SHA).',
-        'auth-sdk-hang' =>
-          e.message ??
-              'Google OK but Firebase Auth hung. Add SHA-256 + fresh google-services.json.',
+        'auth-sdk-hang' => e.message ??
+            'Google OK but Firebase Auth hung. Add SHA-256 + fresh google-services.json.',
         'aborted-by-user' ||
         'web-context-canceled' ||
         'cancelled-popup-request' ||
         'popup-closed-by-user' =>
           'Google Sign-In was cancelled.',
-        'headful-in-progress' || 'overlapping-requests' =>
-          e.message ??
-              'Google Sign-In is stuck. Force-close AeroFit, reopen, try once.',
+        'headful-in-progress' || 'overlapping-requests' => e.message ??
+            'Google Sign-In is stuck. Force-close AeroFit, reopen, try once.',
         _ => (e.message ?? '').toLowerCase().contains('initial state')
             ? 'Google Sign-In failed (browser state). Hard-refresh and try again.'
             : (e.message ?? 'Google Sign-In failed (${e.code}).'),
@@ -270,7 +270,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerSurface,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 5),
         ),
@@ -288,20 +288,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       key: _scaffoldMessengerKey,
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-        body: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF0B1220),
-                AppColors.background,
-                Color(0xFF101820),
-              ],
-            ),
-          ),
+        body: AppBackground(
           child: SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
@@ -317,100 +304,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Center(
-                        child: Container(
-                          width: 88,
-                          height: 88,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(22),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.25),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Image.asset(
-                            'assets/images/app_icon_source.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const ColoredBox(
-                              color: AppColors.surfaceElevated,
-                              child: Icon(
-                                Icons.fitness_center_rounded,
-                                color: AppColors.primary,
-                                size: 40,
-                              ),
+                      const _BrandRow(),
+                      SizedBox(height: isCompact ? 28 : 36),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: _tabController.index == 0
+                                  ? 'Welcome back.\n'
+                                  : 'Start strong.\n',
                             ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'AeroFit',
-                        textAlign: TextAlign.center,
-                        style:
-                            Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5,
-                                ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Train smarter. Track meals, workouts, and progress.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                              height: 1.35,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Build 2026.10.29-v20',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                      const SizedBox(height: 18),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surface.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF2A3344)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              blurRadius: 28,
-                              offset: const Offset(0, 12),
+                            const TextSpan(
+                              text: 'Turn effort into results.',
+                              style: TextStyle(color: AppColors.primary),
                             ),
                           ],
                         ),
-                        padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              height: 1.15,
+                              letterSpacing: -0.8,
+                            ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Track meals, workouts and progress in one place.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                              height: 1.4,
+                            ),
+                      ),
+                      const SizedBox(height: 24),
+                      AppCard(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                        color: AppColors.surface.withValues(alpha: 0.9),
                         child: Column(
                           children: [
-                            TabBar(
-                              controller: _tabController,
-                              indicatorSize: TabBarIndicatorSize.tab,
-                              dividerColor: Colors.transparent,
-                              indicator: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.16),
-                                borderRadius: BorderRadius.circular(12),
+                            Container(
+                              height: 48,
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceElevated,
+                                borderRadius: AppRadii.pillBr,
                               ),
-                              labelColor: AppColors.primary,
-                              unselectedLabelColor: AppColors.textSecondary,
-                              labelStyle: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                              child: TabBar(
+                                controller: _tabController,
+                                tabs: const [
+                                  Tab(text: 'Sign In'),
+                                  Tab(text: 'Sign Up'),
+                                ],
                               ),
-                              tabs: const [
-                                Tab(text: 'Sign In'),
-                                Tab(text: 'Sign Up'),
-                              ],
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
                             if (_errorMessage != null) ...[
                               Container(
                                 width: double.infinity,
@@ -420,8 +368,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       AppColors.danger.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color:
-                                        AppColors.danger.withValues(alpha: 0.35),
+                                    color: AppColors.danger
+                                        .withValues(alpha: 0.35),
                                   ),
                                 ),
                                 child: Text(
@@ -460,14 +408,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Text(
-                        'AeroFit Build 2026.10.29-v20',
+                        'Build 2026.10.29-v20',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.3,
                             ),
                       ),
                     ],
@@ -478,6 +425,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _BrandRow extends StatelessWidget {
+  const _BrandRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            borderRadius: AppRadii.tileBr,
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.18),
+                blurRadius: 24,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Image.asset(
+            'assets/images/app_icon_source.png',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const ColoredBox(
+              color: AppColors.surfaceElevated,
+              child: Icon(
+                Icons.fitness_center_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'AeroFit',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+        ),
+      ],
     );
   }
 }
@@ -497,16 +492,11 @@ class _GoogleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 52,
       child: OutlinedButton(
         onPressed: enabled ? onPressed : null,
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: Color(0xFF353D4D)),
-          backgroundColor: AppColors.surfaceElevated,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
         child: loading
             ? const SizedBox(
@@ -517,14 +507,40 @@ class _GoogleButton extends StatelessWidget {
             : const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.g_mobiledata_rounded, size: 28),
-                  SizedBox(width: 6),
+                  _GoogleMark(),
+                  SizedBox(width: 10),
                   Text(
                     'Continue with Google',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: const Text(
+        'G',
+        style: TextStyle(
+          color: Color(0xFF4285F4),
+          fontWeight: FontWeight.w800,
+          fontSize: 14,
+          height: 1,
+        ),
       ),
     );
   }
@@ -537,7 +553,7 @@ class _OrDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: Color(0xFF2A3344))),
+        const Expanded(child: Divider()),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
@@ -547,7 +563,7 @@ class _OrDivider extends StatelessWidget {
                 ),
           ),
         ),
-        const Expanded(child: Divider(color: Color(0xFF2A3344))),
+        const Expanded(child: Divider()),
       ],
     );
   }
@@ -797,8 +813,7 @@ class _SignUpFormState extends State<_SignUpForm> {
     return raw.trim().replaceAll(',', '.');
   }
 
-  int? _parseAgeValue(String raw) =>
-      int.tryParse(_normalizeNumericInput(raw));
+  int? _parseAgeValue(String raw) => int.tryParse(_normalizeNumericInput(raw));
 
   double? _parseDecimalValue(String raw) =>
       double.tryParse(_normalizeNumericInput(raw));

@@ -45,11 +45,11 @@ class MealBreakdownSheet extends StatelessWidget {
         return Container(
           decoration: const BoxDecoration(
             color: AppColors.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(
-              top: BorderSide(color: Color(0xFF252B38)),
-              left: BorderSide(color: Color(0xFF252B38)),
-              right: BorderSide(color: Color(0xFF252B38)),
+              top: BorderSide(color: AppColors.border),
+              left: BorderSide(color: AppColors.border),
+              right: BorderSide(color: AppColors.border),
             ),
           ),
           child: Column(
@@ -78,17 +78,19 @@ class MealBreakdownSheet extends StatelessWidget {
                     const SizedBox(height: 18),
                     Text(
                       meal.name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     RichText(
                       text: TextSpan(
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
                         children: [
                           const TextSpan(text: 'Total Calories: '),
                           TextSpan(
@@ -158,7 +160,7 @@ class _HeaderRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF252B38)),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -185,28 +187,28 @@ class _HeaderRow extends StatelessWidget {
             onTap: onAddFood,
             borderRadius: BorderRadius.circular(12),
             child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.accent.withValues(alpha: 0.35),
-            ),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add_rounded, size: 18, color: AppColors.accent),
-              SizedBox(width: 4),
-              Text(
-                'Add Food',
-                style: TextStyle(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w700,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.35),
                 ),
               ),
-            ],
-          ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 18, color: AppColors.accent),
+                  SizedBox(width: 4),
+                  Text(
+                    'Add Food',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -237,7 +239,7 @@ class _MacroRow extends StatelessWidget {
             label: 'Protein',
             value: protein,
             goal: goals.proteinGrams,
-            color: const Color(0xFF2196F3),
+            color: AppColors.info,
             icon: Icons.water_drop_outlined,
           ),
         ),
@@ -246,7 +248,7 @@ class _MacroRow extends StatelessWidget {
             label: 'Carbs',
             value: carbs,
             goal: goals.carbsGrams,
-            color: const Color(0xFFFF9800),
+            color: AppColors.warning,
             icon: Icons.grain_rounded,
           ),
         ),
@@ -340,8 +342,8 @@ class _IngredientCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF252B38)),
+        borderRadius: AppRadii.tileBr,
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -381,7 +383,7 @@ class _IngredientCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF252B38)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Text(
               ingredient.portionLabel,

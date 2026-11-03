@@ -31,7 +31,8 @@ class CoachRoutineBuilderSection extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.fitness_center_rounded, color: AppColors.primary),
+                    const Icon(Icons.fitness_center_rounded,
+                        color: AppColors.primary),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -73,7 +74,7 @@ class CoachRoutineBuilderSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF252B38)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   'No workout templates yet. Create your first gym routine schedule.',
@@ -95,24 +96,26 @@ class CoachRoutineBuilderSection extends StatelessWidget {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF252B38)),
+                      borderRadius: AppRadii.tileBr,
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           template.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           '${template.totalDays} day schedule · ${template.exercisePreview.length} exercises',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
                         ),
                         if (template.exercisePreview.isNotEmpty) ...[
                           const SizedBox(height: 10),
@@ -126,8 +129,8 @@ class CoachRoutineBuilderSection extends StatelessWidget {
                                       exercise,
                                       style: const TextStyle(fontSize: 12),
                                     ),
-                                    backgroundColor:
-                                        AppColors.primary.withValues(alpha: 0.12),
+                                    backgroundColor: AppColors.primary
+                                        .withValues(alpha: 0.12),
                                     side: BorderSide.none,
                                     visualDensity: VisualDensity.compact,
                                   ),
@@ -147,7 +150,8 @@ class CoachRoutineBuilderSection extends StatelessWidget {
   }
 }
 
-Future<void> showCreateRoutineDialog(BuildContext context, VoidCallback onSaved) {
+Future<void> showCreateRoutineDialog(
+    BuildContext context, VoidCallback onSaved) {
   return showDialog<void>(
     context: context,
     builder: (context) => CreateRoutineDialog(onSaved: onSaved),

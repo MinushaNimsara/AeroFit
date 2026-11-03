@@ -76,7 +76,7 @@ class _EditCoachDialogState extends ConsumerState<_EditCoachDialog> {
           SnackBar(
             content: Text(next.message ?? 'Coach profile updated.'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.win,
+            backgroundColor: AppColors.winSurface,
           ),
         );
         ref.read(coachEditProvider.notifier).reset();
@@ -88,7 +88,7 @@ class _EditCoachDialogState extends ConsumerState<_EditCoachDialog> {
                   'Password reset email sent to ${widget.entry.email}.',
             ),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.win,
+            backgroundColor: AppColors.winSurface,
           ),
         );
         ref.read(coachEditProvider.notifier).clearPasswordResetFlag();
@@ -97,15 +97,15 @@ class _EditCoachDialogState extends ConsumerState<_EditCoachDialog> {
           SnackBar(
             content: Text(next.errorMessage!),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.danger,
+            backgroundColor: AppColors.dangerSurface,
           ),
         );
         ref.read(coachEditProvider.notifier).clearError();
       }
     });
 
-    final canReset = widget.entry.email.trim().isNotEmpty &&
-        widget.entry.email != '—';
+    final canReset =
+        widget.entry.email.trim().isNotEmpty && widget.entry.email != '—';
 
     return AlertDialog(
       backgroundColor: AppColors.surfaceElevated,

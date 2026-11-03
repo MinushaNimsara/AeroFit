@@ -21,7 +21,7 @@ class PlatformMetricCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.tileBr,
         border: Border.all(color: accent.withValues(alpha: 0.25)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,

@@ -67,10 +67,9 @@ class ExerciseFilterBar extends ConsumerWidget {
                   label: _difficultyLabel(difficulty),
                   selected: selectedDifficulty == difficulty,
                   onTap: () => ref
-                      .read(exerciseDifficultyFilterProvider.notifier)
-                      .state = selectedDifficulty == difficulty
-                          ? null
-                          : difficulty,
+                          .read(exerciseDifficultyFilterProvider.notifier)
+                          .state =
+                      selectedDifficulty == difficulty ? null : difficulty,
                 ),
                 const SizedBox(width: 8),
               ],
@@ -81,7 +80,8 @@ class ExerciseFilterBar extends ConsumerWidget {
     );
   }
 
-  String _difficultyLabel(ExerciseDifficulty difficulty) => switch (difficulty) {
+  String _difficultyLabel(ExerciseDifficulty difficulty) =>
+      switch (difficulty) {
         ExerciseDifficulty.beginner => 'Beginner',
         ExerciseDifficulty.intermediate => 'Intermediate',
         ExerciseDifficulty.advanced => 'Advanced',
@@ -102,28 +102,24 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? AppColors.primary.withValues(alpha: 0.18)
-          : AppColors.surface,
-      borderRadius: BorderRadius.circular(20),
+      color: selected ? AppColors.primary : AppColors.surface,
+      borderRadius: AppRadii.pillBr,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadii.pillBr,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppRadii.pillBr,
             border: Border.all(
-              color: selected
-                  ? AppColors.primary.withValues(alpha: 0.6)
-                  : const Color(0xFF252B38),
+              color: selected ? AppColors.primary : AppColors.border,
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? AppColors.primary : AppColors.textSecondary,
+              color: selected ? AppColors.onPrimary : AppColors.textSecondary,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               fontSize: 13,
             ),

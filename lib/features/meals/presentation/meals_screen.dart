@@ -5,6 +5,7 @@ import 'package:aerofit/features/meals/domain/meal_entry.dart';
 import 'package:aerofit/features/meals/presentation/widgets/log_meal_sheet.dart';
 import 'package:aerofit/features/meals/presentation/widgets/meal_breakdown_sheet.dart';
 import 'package:aerofit/features/meals/providers/meals_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,76 +78,107 @@ class _MealsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = calorieGoal > 0
-        ? (totalCalories / calorieGoal).clamp(0.0, 1.0)
-        : 0.0;
+    final progress =
+        calorieGoal > 0 ? (totalCalories / calorieGoal).clamp(0.0, 1.0) : 0.0;
     final remaining = (calorieGoal - totalCalories).clamp(0, calorieGoal);
     final overGoal = totalCalories > calorieGoal;
-    final progressColor =
-        overGoal ? AppColors.danger : AppColors.accent;
+    final progressColor = overGoal ? AppColors.danger : AppColors.accent;
 
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    CircularPercentIndicator(
-                      radius: 72,
-                      lineWidth: 12,
-                      percent: progress,
-                      animation: true,
-                      animationDuration: 800,
-                      circularStrokeCap: CircularStrokeCap.round,
-                      backgroundColor: AppColors.ringTrack,
-                      progressColor: progressColor,
-                      center: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$totalCalories',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          Text(
-                            'of $calorieGoal kcal',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(color: AppColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      overGoal
-                          ? '${totalCalories - calorieGoal} kcal over goal'
-                          : '$remaining kcal remaining today',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: overGoal
-                                ? AppColors.danger
-                                : AppColors.textSecondary,
+            child: AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  CircularPercentIndicator(
+                    radius: 58,
+                    lineWidth: 10,
+                    percent: progress,
+                    animation: true,
+                    animationDuration: 800,
+                    circularStrokeCap: CircularStrokeCap.round,
+                    backgroundColor: AppColors.ringTrack,
+                    progressColor: progressColor,
+                    center: Text(
+                      '${(progress * 100).round()}%',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
                           ),
                     ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 8,
-                        backgroundColor: AppColors.ringTrack,
-                        color: progressColor,
-                      ),
+                  ),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Calories today',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                '$totalCalories',
+                                style: TextStyle(
+                                  color: progressColor,
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '/ $calorieGoal kcal',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                (overGoal ? AppColors.danger : AppColors.accent)
+                                    .withValues(alpha: 0.14),
+                            borderRadius: AppRadii.pillBr,
+                          ),
+                          child: Text(
+                            overGoal
+                                ? '${totalCalories - calorieGoal} kcal over goal'
+                                : '$remaining kcal remaining',
+                            style: TextStyle(
+                              color: overGoal
+                                  ? AppColors.danger
+                                  : AppColors.accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ).animate().fadeIn(duration: 400.ms),
           ),
@@ -163,8 +195,7 @@ class _MealsBody extends StatelessWidget {
                     Icon(
                       Icons.restaurant_menu_rounded,
                       size: 48,
-                      color:
-                          AppColors.textSecondary.withValues(alpha: 0.5),
+                      color: AppColors.textSecondary.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -237,73 +268,76 @@ class _MealCard extends StatelessWidget {
           padding: const EdgeInsets.only(right: 20),
           decoration: BoxDecoration(
             color: AppColors.danger.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppRadii.tileBr,
           ),
-          child: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+          child:
+              const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
         ),
         onDismissed: (_) => onDelete(),
         child: Material(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadii.tileBr,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppRadii.tileBr,
             child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF252B38)),
-            ),
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
+              decoration: BoxDecoration(
+                borderRadius: AppRadii.tileBr,
+                border: Border.all(color: AppColors.border),
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _mealIcon(meal.mealType),
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
                   ),
-                  child: Icon(
-                    _mealIcon(meal.mealType),
-                    color: AppColors.primary,
-                    size: 22,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          meal.name,
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${meal.mealType} · $time',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        meal.name,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${meal.mealType} · $time',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
-                    ],
+                  Text(
+                    '${meal.calories}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accent,
+                        ),
                   ),
-                ),
-                Text(
-                  '${meal.calories}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.accent,
-                      ),
-                ),
-                Text(
-                  ' kcal',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
-              ],
-            ),
+                  Text(
+                    ' kcal',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

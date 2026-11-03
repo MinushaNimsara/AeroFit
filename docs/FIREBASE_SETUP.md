@@ -88,15 +88,28 @@ flutter run -d chrome --dart-define=DISPLAY_NAME=Minusha
 
 Until `flutterfire configure` replaces `REPLACE_ME` in `firebase_options.dart`, the dashboard uses **demo data**.
 
-## 9. Python food vision API
+## 9. Meal photo analysis
 
-Set your FastAPI/Flask URL when running:
+### Spark (free) — current default
+
+Cloud Functions + Secret Manager need **Blaze**. On Spark, run/build with a
+compile-time key (local/dev only — the key ships inside the JS/APK):
 
 ```powershell
-flutter run -d chrome --dart-define=FOOD_VISION_API_URL=https://your-api.com/analyze-food
+flutter run -d chrome --dart-define=GEMINI_API_KEY=your-key
 ```
 
-Client: `lib/core/services/food_vision_service.dart`.
+`USE_MEAL_CLOUD_FUNCTION` defaults to `false`.
+
+### Blaze (later) — preferred for production
+
+```powershell
+firebase functions:secrets:set GEMINI_API_KEY
+firebase deploy --only functions:analyzeMeal,firestore:rules,storage
+flutter build web --release --dart-define=USE_MEAL_CLOUD_FUNCTION=true
+```
+
+Do **not** bake `GEMINI_API_KEY` into production web once the function is live.
 
 ## 10. PWA + Firebase Hosting (production)
 

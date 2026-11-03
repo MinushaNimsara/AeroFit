@@ -36,7 +36,8 @@ class _CreateRoutineDialogState extends ConsumerState<CreateRoutineDialog> {
       for (final exercise in picked) {
         if (existingIds.contains(exercise.id)) continue;
         _selected.add(
-          RoutineExerciseSelection(name: exercise.name, exerciseId: exercise.id),
+          RoutineExerciseSelection(
+              name: exercise.name, exerciseId: exercise.id),
         );
       }
       _exercisesError = null;
@@ -112,7 +113,7 @@ class _CreateRoutineDialogState extends ConsumerState<CreateRoutineDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerSurface,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -163,7 +164,7 @@ class _CreateRoutineDialogState extends ConsumerState<CreateRoutineDialog> {
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF252B38)),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Text(
                       'No exercises added yet. Pick from the 729-exercise library or add a custom one.',
@@ -185,7 +186,7 @@ class _CreateRoutineDialogState extends ConsumerState<CreateRoutineDialog> {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF252B38)),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Row(
                         children: [
@@ -225,7 +226,8 @@ class _CreateRoutineDialogState extends ConsumerState<CreateRoutineDialog> {
                   const SizedBox(height: 4),
                   Text(
                     _exercisesError!,
-                    style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                    style:
+                        const TextStyle(color: AppColors.danger, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 8),

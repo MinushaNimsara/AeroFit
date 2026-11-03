@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:aerofit/core/config/env.dart';
 import 'package:aerofit/features/meals/domain/meal_ingredient.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
@@ -23,9 +24,11 @@ class MealAnalysisResult {
   final List<MealIngredient> ingredients;
 }
 
-/// Vision meal analysis via Gemini API.
+/// Vision meal analysis via Cloud Function `analyzeMeal` (preferred)
+/// with optional direct Gemini fallback for local/dev.
 class MealAnalyzerService {
-  MealAnalyzerService({http.Client? client}) : _client = client ?? http.Client();
+  MealAnalyzerService({http.Client? client})
+      : _client = client ?? http.Client();
 
   final http.Client _client;
 
@@ -66,16 +69,72 @@ RULES:
 ''';
 
   Future<MealAnalysisResult> analyzeFoodFromImage(XFile image) async {
-    if (Env.geminiApiKey.trim().isEmpty) {
-      throw Exception(
-        'GEMINI_API_KEY is not configured. Rebuild with '
-        '--dart-define=GEMINI_API_KEY=your-key.',
-      );
-    }
-
     final bytes = await image.readAsBytes();
     final mimeType = _resolveMimeType(image);
     final base64Image = base64Encode(bytes);
+
+    if (Env.useMealCloudFunction) {
+      try {
+        return await _analyzeViaCloudFunction(
+          base64Image: base64Image,
+          mimeType: mimeType,
+        );
+      } on FirebaseFunctionsException catch (e) {
+        if (Env.geminiApiKey.trim().isNotEmpty &&
+            (e.code == 'not-found' ||
+                e.code == 'unavailable' ||
+                e.code == 'failed-precondition')) {
+          return _analyzeViaDirectGemini(
+            base64Image: base64Image,
+            mimeType: mimeType,
+          );
+        }
+        throw Exception(_mapFunctionsError(e));
+      }
+    }
+
+    return _analyzeViaDirectGemini(
+      base64Image: base64Image,
+      mimeType: mimeType,
+    );
+  }
+
+  Future<MealAnalysisResult> _analyzeViaCloudFunction({
+    required String base64Image,
+    required String mimeType,
+  }) async {
+    final callable =
+        FirebaseFunctions.instanceFor(region: 'us-central1').httpsCallable(
+      'analyzeMeal',
+      options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
+    );
+
+    final result = await callable.call(<String, dynamic>{
+      'imageBase64': base64Image,
+      'mimeType': mimeType,
+      'model': Env.geminiModel,
+    });
+
+    final data = result.data;
+    if (data is! Map) {
+      throw Exception('Cloud Function returned invalid meal payload');
+    }
+    return _parseMealJson(
+      _normalizeMealJson(Map<String, dynamic>.from(data)),
+    );
+  }
+
+  Future<MealAnalysisResult> _analyzeViaDirectGemini({
+    required String base64Image,
+    required String mimeType,
+  }) async {
+    if (Env.geminiApiKey.trim().isEmpty) {
+      throw Exception(
+        'Meal analysis is not configured. Deploy Cloud Function '
+        '`analyzeMeal` (GEMINI_API_KEY secret), or for local only rebuild with '
+        '--dart-define=GEMINI_API_KEY=your-key.',
+      );
+    }
 
     final response = await _requestMealAnalysis(
       base64Image: base64Image,
@@ -91,8 +150,19 @@ RULES:
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     final rawText = _extractCandidateText(payload);
     final mealJson = _decodeMealJson(rawText);
-
     return _parseMealJson(mealJson);
+  }
+
+  String _mapFunctionsError(FirebaseFunctionsException e) {
+    return switch (e.code) {
+      'unauthenticated' => 'Sign in required to analyze meal photos.',
+      'invalid-argument' => e.message ?? 'Invalid meal photo request.',
+      'failed-precondition' =>
+        'Meal analysis is not configured on the server yet.',
+      'resource-exhausted' => 'Meal analysis quota exceeded. Try again later.',
+      'deadline-exceeded' => 'Meal analysis timed out. Try a smaller photo.',
+      _ => e.message ?? 'Meal analysis failed (${e.code}).',
+    };
   }
 
   Future<http.Response> _requestMealAnalysis({
@@ -108,7 +178,8 @@ RULES:
       'gemini-2.5-flash',
     ];
     final seen = <String>{};
-    final attempts = <({String apiVersion, String modelId, bool useStructuredJson})>[];
+    final attempts =
+        <({String apiVersion, String modelId, bool useStructuredJson})>[];
     for (final modelId in fallbackModels) {
       if (!seen.add(modelId)) continue;
       attempts.add((
@@ -140,7 +211,8 @@ RULES:
 
       if (response.statusCode == 400 && attempt.useStructuredJson) {
         final body = response.body;
-        if (body.contains('responseMimeType') || body.contains('response_mime_type')) {
+        if (body.contains('responseMimeType') ||
+            body.contains('response_mime_type')) {
           response = await _generateContent(
             apiVersion: attempt.apiVersion,
             modelId: attempt.modelId,
@@ -162,7 +234,8 @@ RULES:
       return response;
     }
 
-    return lastResponse ?? http.Response('No Gemini model attempts were made.', 500);
+    return lastResponse ??
+        http.Response('No Gemini model attempts were made.', 500);
   }
 
   Future<http.Response> _generateContent({
@@ -270,7 +343,8 @@ RULES:
       }
     }
 
-    final macros = map['macros'] ?? map['macro'] ?? map['nutrition'] ?? map['nutrients'];
+    final macros =
+        map['macros'] ?? map['macro'] ?? map['nutrition'] ?? map['nutrients'];
     if (macros is Map) {
       final macroMap = Map<String, dynamic>.from(macros);
       map['protein'] ??= macroMap['protein'] ??
@@ -281,28 +355,37 @@ RULES:
           macroMap['carbohydrates'] ??
           macroMap['carbohydrates_g'] ??
           macroMap['carbs_g'];
-      map['fats'] ??=
-          macroMap['fats'] ?? macroMap['fat'] ?? macroMap['fat_g'] ?? macroMap['fats_g'];
+      map['fats'] ??= macroMap['fats'] ??
+          macroMap['fat'] ??
+          macroMap['fat_g'] ??
+          macroMap['fats_g'];
     }
 
-    map['protein'] ??= map['protein_g'] ?? map['proteinGrams'] ?? map['proteins'];
-    map['carbs'] ??=
-        map['carbohydrates'] ?? map['carbohydrates_g'] ?? map['carbs_g'] ?? map['carbohydrate'];
+    map['protein'] ??=
+        map['protein_g'] ?? map['proteinGrams'] ?? map['proteins'];
+    map['carbs'] ??= map['carbohydrates'] ??
+        map['carbohydrates_g'] ??
+        map['carbs_g'] ??
+        map['carbohydrate'];
     map['fats'] ??= map['fat'] ?? map['fat_g'] ?? map['fats_g'];
 
-    map['ingredients'] ??=
-        map['items'] ?? map['components'] ?? map['foods'] ?? map['ingredient_list'];
+    map['ingredients'] ??= map['items'] ??
+        map['components'] ??
+        map['foods'] ??
+        map['ingredient_list'];
 
     return map;
   }
 
   MealAnalysisResult _parseMealJson(Map<String, dynamic> json) {
-    final name = _readString(json['name'] ?? json['meal_name'] ?? json['title']);
+    final name =
+        _readString(json['name'] ?? json['meal_name'] ?? json['title']);
     if (name == null || name.isEmpty) {
       throw Exception('AI response missing meal name');
     }
 
-    final calories = _readInt(json['calories'] ?? json['total_calories'] ?? json['kcal']);
+    final calories =
+        _readInt(json['calories'] ?? json['total_calories'] ?? json['kcal']);
     if (calories == null || calories < 0) {
       throw Exception('AI response missing valid calories');
     }
@@ -382,7 +465,9 @@ RULES:
         results.add(MealIngredient.fromMap(map));
       }
     }
-    return results.where((item) => item.name.isNotEmpty).toList(growable: false);
+    return results
+        .where((item) => item.name.isNotEmpty)
+        .toList(growable: false);
   }
 
   ({double protein, double carbs, double fats}) _sumIngredientMacros(
@@ -399,7 +484,8 @@ RULES:
     return (protein: protein, carbs: carbs, fats: fats);
   }
 
-  ({double protein, double carbs, double fats}) _estimateMacrosFromCalories(int calories) {
+  ({double protein, double carbs, double fats}) _estimateMacrosFromCalories(
+      int calories) {
     return (
       protein: (calories * 0.25) / 4,
       carbs: (calories * 0.45) / 4,
@@ -430,9 +516,9 @@ RULES:
   double _readMacro(dynamic value) {
     return switch (value) {
       final num v => v < 0 ? 0.0 : v.toDouble(),
-      final String v =>
-        double.tryParse(v.replaceAll(RegExp(r'[^0-9.]'), ''))?.clamp(0.0, double.infinity) ??
-            0.0,
+      final String v => double.tryParse(v.replaceAll(RegExp(r'[^0-9.]'), ''))
+              ?.clamp(0.0, double.infinity) ??
+          0.0,
       _ => 0.0,
     };
   }
@@ -475,7 +561,8 @@ RULES:
   String _cleanJsonText(String raw) {
     var text = raw.trim();
     if (text.startsWith('```')) {
-      text = text.replaceFirst(RegExp(r'^```(?:json)?\s*', caseSensitive: false), '');
+      text = text.replaceFirst(
+          RegExp(r'^```(?:json)?\s*', caseSensitive: false), '');
       text = text.replaceFirst(RegExp(r'\s*```$'), '');
     }
     return text.trim();

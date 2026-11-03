@@ -107,16 +107,18 @@ BRIEFS: dict[str, tuple[str, str, str]] = {
     ),
     "meadows_row": (
         "back_026",
-        "START of Meadows row (John Meadows landmine row): visible floor landmine pivot, "
-        "bar diagonal across frame. Athlete stands PERPENDICULAR / side-on to the bar "
-        "(chest faces across the bar, not toward the pivot). Staggered stance with front "
-        "foot near plates, free FOREARM braced on front thigh. ONE hand OVERHAND/pronated "
-        "on the FAT sleeve tip beyond the plates — arm fully straight, sleeve near floor. "
-        "Same working hand both frames. NOT a V-handle landmine row, NOT facing the pivot, "
-        "NOT a dumbbell row, NOT a photo, NOT a tank top — shirtless anatomical only.",
-        "END of Meadows row: SAME athlete/camera/landmine/stance/working hand. Elbow FLARED "
-        "high and OUT (horizontal abduction) pulling sleeve to hip; working lat + upper back "
-        "bright red. Free forearm still on front thigh. Huge ROM vs start hang.",
+        "START of Meadows row: visible landmine floor pivot, barbell diagonal, "
+        "athlete PERPENDICULAR/side-on to bar (not facing the plates head-on), "
+        "staggered stance, free forearm braced on front thigh, RIGHT hand OVERHAND "
+        "wrapped directly around the fat bare metal barbell SLEEVE/collar itself "
+        "(John Meadows grip) — NO D-handle, NO T-handle, NO perpendicular attachment, "
+        "NO strap, fingers on cylindrical sleeve tip only. RIGHT arm fully straight "
+        "hanging, sleeve near floor. NOT dumbbell row, NOT V-handle landmine, "
+        "NOT photo clothing — anatomical only.",
+        "END of Meadows row: SAME athlete/side/camera/landmine as start — RIGHT hand "
+        "still gripping bare sleeve (NO D-handle), RIGHT elbow flared high outward "
+        "pulling sleeve to hip, LEFT forearm still on thigh, working lat bright red. "
+        "Do not switch working arm.",
     ),
     "single_arm_landmine_row": (
         "back_043",

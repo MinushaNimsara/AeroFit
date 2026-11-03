@@ -7,10 +7,18 @@ class DailyGoalRing extends StatelessWidget {
     super.key,
     required this.progress,
     this.size = 200,
+    this.color = AppColors.primary,
+    this.lineWidth,
+    this.center,
+    this.showCaption = true,
   });
 
   final double progress;
   final double size;
+  final Color color;
+  final double? lineWidth;
+  final Widget? center;
+  final bool showCaption;
 
   @override
   Widget build(BuildContext context) {
@@ -19,32 +27,37 @@ class DailyGoalRing extends StatelessWidget {
 
     return CircularPercentIndicator(
       radius: size / 2,
-      lineWidth: 14,
+      lineWidth: lineWidth ?? size * 0.09,
       percent: clamped,
       animation: true,
       animationDuration: 1200,
       circularStrokeCap: CircularStrokeCap.round,
       backgroundColor: AppColors.ringTrack,
-      progressColor: AppColors.primary,
-      center: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${percent.round()}%',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+      progressColor: color,
+      center: center ??
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${percent.round()}%',
+                style: TextStyle(
+                  fontSize: size * 0.22,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
                 ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Daily goals',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
+              ),
+              if (showCaption) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Daily goals',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                 ),
+              ],
+            ],
           ),
-        ],
-      ),
     );
   }
 }

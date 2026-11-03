@@ -18,19 +18,31 @@ class ExerciseCategoryVisual {
   );
 
   static const Map<String, ExerciseCategoryVisual> _byCategory = {
-    'Chest': ExerciseCategoryVisual._(Icons.fitness_center_rounded, Color(0xFF6C9EFF)),
-    'Back': ExerciseCategoryVisual._(Icons.rowing_rounded, Color(0xFF7EE787)),
-    'Biceps': ExerciseCategoryVisual._(Icons.sports_gymnastics_rounded, Color(0xFFFFB454)),
-    'Triceps': ExerciseCategoryVisual._(Icons.sports_martial_arts_rounded, Color(0xFFFF8A65)),
-    'Shoulders': ExerciseCategoryVisual._(Icons.accessibility_new_rounded, Color(0xFF64D8CB)),
-    'Legs': ExerciseCategoryVisual._(Icons.directions_walk_rounded, Color(0xFFBA68C8)),
-    'Core': ExerciseCategoryVisual._(Icons.self_improvement_rounded, Color(0xFFFFD54F)),
-    'Forearms': ExerciseCategoryVisual._(Icons.back_hand_rounded, Color(0xFF90A4AE)),
-    'Cardio': ExerciseCategoryVisual._(Icons.monitor_heart_rounded, Color(0xFFE85D75)),
-    'Full Body': ExerciseCategoryVisual._(Icons.accessibility_rounded, Color(0xFF6C9EFF)),
-    'Bodyweight/Calisthenics': ExerciseCategoryVisual._(Icons.sports_gymnastics_rounded, Color(0xFF7EE787)),
-    'Mobility/Stretching': ExerciseCategoryVisual._(Icons.self_improvement_rounded, Color(0xFF4FC3F7)),
-    'Athletic Performance': ExerciseCategoryVisual._(Icons.bolt_rounded, Color(0xFFFFB454)),
+    'Chest':
+        ExerciseCategoryVisual._(Icons.fitness_center_rounded, AppColors.info),
+    'Back': ExerciseCategoryVisual._(Icons.rowing_rounded, AppColors.accent),
+    'Biceps': ExerciseCategoryVisual._(
+        Icons.sports_gymnastics_rounded, AppColors.warning),
+    'Triceps': ExerciseCategoryVisual._(
+        Icons.sports_martial_arts_rounded, Color(0xFFFF7A59)),
+    'Shoulders': ExerciseCategoryVisual._(
+        Icons.accessibility_new_rounded, Color(0xFF5EEAD4)),
+    'Legs': ExerciseCategoryVisual._(
+        Icons.directions_walk_rounded, AppColors.violet),
+    'Core': ExerciseCategoryVisual._(
+        Icons.self_improvement_rounded, Color(0xFFFFD84D)),
+    'Forearms': ExerciseCategoryVisual._(
+        Icons.back_hand_rounded, AppColors.textSecondary),
+    'Cardio':
+        ExerciseCategoryVisual._(Icons.monitor_heart_rounded, AppColors.danger),
+    'Full Body': ExerciseCategoryVisual._(
+        Icons.accessibility_rounded, AppColors.primary),
+    'Bodyweight/Calisthenics': ExerciseCategoryVisual._(
+        Icons.sports_gymnastics_rounded, AppColors.accent),
+    'Mobility/Stretching': ExerciseCategoryVisual._(
+        Icons.self_improvement_rounded, Color(0xFF38BDF8)),
+    'Athletic Performance':
+        ExerciseCategoryVisual._(Icons.bolt_rounded, AppColors.warning),
   };
 
   static ExerciseCategoryVisual of(String category) =>

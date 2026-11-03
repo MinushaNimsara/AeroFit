@@ -1,5 +1,6 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
+import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_demo_stage.dart';
 import 'package:aerofit/features/live_workout/data/live_workout_repository.dart';
 import 'package:aerofit/features/live_workout/presentation/widgets/coach_nudge_listener.dart';
 import 'package:aerofit/features/live_workout/presentation/widgets/rest_timer_modal.dart';
@@ -43,8 +44,10 @@ class _LiveWorkoutSessionBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final liveStatus = ref.watch(liveWorkoutStatusProvider).valueOrNull;
     final sessionIndex = ref.watch(liveWorkoutSessionIndexProvider);
-    final restMinutes = ref.watch(traineeMaxRestMinutesProvider).valueOrNull ?? 3;
-    final totalSets = liveStatus?.totalSets ?? LiveWorkoutRepository.defaultSetsPerExercise;
+    final restMinutes =
+        ref.watch(traineeMaxRestMinutesProvider).valueOrNull ?? 3;
+    final totalSets =
+        liveStatus?.totalSets ?? LiveWorkoutRepository.defaultSetsPerExercise;
 
     if (exercises.isEmpty) {
       return Scaffold(
@@ -86,8 +89,9 @@ class _LiveWorkoutSessionBody extends ConsumerWidget {
                   AppColors.surfaceElevated,
                 ],
               ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              borderRadius: AppRadii.tileBr,
+              border:
+                  Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,7 +105,14 @@ class _LiveWorkoutSessionBody extends ConsumerWidget {
                         color: AppColors.primary,
                       ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 12),
+                ExerciseDemoStage(
+                  imageUrl: current.imageUrl,
+                  exerciseId: current.exerciseId,
+                  square: true,
+                  borderRadius: 14,
+                ),
+                const SizedBox(height: 10),
                 Text(
                   'Now: ${current.name}',
                   style: Theme.of(context).textTheme.bodyMedium,
@@ -147,83 +158,121 @@ class _LiveWorkoutSessionBody extends ConsumerWidget {
           ...exercises.asMap().entries.map((entry) {
             final index = entry.key;
             final exercise = entry.value;
-            final done = completedIds.contains(exercise.id) ||
-                exercise.isCompletedToday;
+            final done =
+                completedIds.contains(exercise.id) || exercise.isCompletedToday;
             final isCurrent = index == currentIndex;
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isCurrent ? AppColors.surfaceElevated : AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isCurrent
-                      ? AppColors.primary.withValues(alpha: 0.5)
-                      : const Color(0xFF252B38),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    done
-                        ? Icons.check_circle_rounded
-                        : isCurrent
-                            ? Icons.play_circle_fill_rounded
-                            : Icons.radio_button_unchecked_rounded,
-                    color: done
-                        ? AppColors.win
-                        : isCurrent
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          exercise.name,
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    decoration:
-                                        done ? TextDecoration.lineThrough : null,
-                                  ),
-                        ),
-                        if (exercise.weightOrSetting.isNotEmpty)
-                          Text(
-                            exercise.weightOrSetting,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.textSecondary),
-                          ),
-                        if (isCurrent && !done)
-                          Text(
-                            '$setsDone / $totalSets sets',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                      ],
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: AppRadii.tileBr,
+                onTap: done
+                    ? null
+                    : () async {
+                        if (isCurrent) return;
+                        await ref
+                            .read(liveWorkoutControllerProvider)
+                            .selectExercise(
+                              index: index,
+                              exerciseName: exercise.name,
+                              completedExerciseIds: completedIds,
+                            );
+                      },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isCurrent
+                        ? AppColors.surfaceElevated
+                        : AppColors.surface,
+                    borderRadius: AppRadii.tileBr,
+                    border: Border.all(
+                      color: isCurrent
+                          ? AppColors.primary.withValues(alpha: 0.5)
+                          : AppColors.border,
                     ),
                   ),
-                  if (isCurrent && !done)
-                    FilledButton(
-                      onPressed: () => _completeSet(
-                        context,
-                        ref,
-                        exercise: exercise,
-                        exercises: exercises,
-                        currentIndex: currentIndex,
-                        completedIds: completedIds,
-                        restMinutes: restMinutes,
-                        totalSets: totalSets,
-                        currentSetsDone: setsDone,
+                  child: Row(
+                    children: [
+                      Icon(
+                        done
+                            ? Icons.check_circle_rounded
+                            : isCurrent
+                                ? Icons.play_circle_fill_rounded
+                                : Icons.play_circle_outline_rounded,
+                        color: done
+                            ? AppColors.win
+                            : isCurrent
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                       ),
-                      child: const Text('Complete Set'),
-                    ),
-                ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              exercise.name,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    decoration: done
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
+                            ),
+                            if (exercise.weightOrSetting.isNotEmpty)
+                              Text(
+                                exercise.weightOrSetting,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppColors.textSecondary),
+                              ),
+                            if (isCurrent && !done)
+                              Text(
+                                '$setsDone / $totalSets sets',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            if (!isCurrent && !done)
+                              Text(
+                                'Tap to start',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (isCurrent && !done)
+                        FilledButton(
+                          onPressed: () => _completeSet(
+                            context,
+                            ref,
+                            exercise: exercise,
+                            exercises: exercises,
+                            currentIndex: currentIndex,
+                            completedIds: completedIds,
+                            restMinutes: restMinutes,
+                            totalSets: totalSets,
+                            currentSetsDone: setsDone,
+                          ),
+                          child: const Text('Complete Set'),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             );
           }),

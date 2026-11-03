@@ -14,7 +14,7 @@ Future<Exercise?> showSingleExercisePickerSheet(BuildContext context) async {
     isScrollControlled: true,
     backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (_) => const _ExercisePickerSheet(multiSelect: false),
   );
@@ -29,7 +29,7 @@ Future<List<Exercise>?> showMultiExercisePickerSheet(BuildContext context) {
     isScrollControlled: true,
     backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (_) => const _ExercisePickerSheet(multiSelect: true),
   );
@@ -121,9 +121,8 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                         label: category,
                         selected: _category == category,
                         onTap: () => setState(
-                          () => _category = _category == category
-                              ? null
-                              : category,
+                          () => _category =
+                              _category == category ? null : category,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -132,7 +131,7 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                 ),
               ),
               const SizedBox(height: 10),
-              const Divider(height: 1, color: Color(0xFF252B38)),
+              const Divider(height: 1, color: AppColors.border),
               Expanded(
                 child: libraryAsync.when(
                   loading: () => const Center(
@@ -253,7 +252,7 @@ class _CategoryChip extends StatelessWidget {
             border: Border.all(
               color: selected
                   ? AppColors.primary.withValues(alpha: 0.6)
-                  : const Color(0xFF252B38),
+                  : AppColors.border,
             ),
           ),
           child: Text(

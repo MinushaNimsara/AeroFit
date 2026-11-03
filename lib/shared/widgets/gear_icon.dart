@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 /// Vector gear icon — does not rely on Material Icons font (fixes blank PWA buttons).
@@ -87,7 +88,7 @@ class _GearIconPainter extends CustomPainter {
       center,
       size.width * 0.13,
       Paint()
-        ..color = holeColor ?? const Color(0xFF1E2430)
+        ..color = holeColor ?? AppColors.surfaceElevated
         ..style = PaintingStyle.fill,
     );
   }

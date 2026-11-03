@@ -1,5 +1,6 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/master_admin/providers/master_admin_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,18 +53,7 @@ class _MasterAdminLoginScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0A0C12),
-              Color(0xFF12182A),
-              Color(0xFF0D0F14),
-            ],
-          ),
-        ),
+      body: AppBackground(
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -76,15 +66,16 @@ class _MasterAdminLoginScreenState
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary.withValues(alpha: 0.35),
-                            AppColors.accent.withValues(alpha: 0.15),
-                          ],
-                        ),
+                        color: AppColors.primary.withValues(alpha: 0.12),
                         border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.5),
+                          color: AppColors.primary.withValues(alpha: 0.45),
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            blurRadius: 32,
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.shield_moon_rounded,
@@ -111,85 +102,83 @@ class _MasterAdminLoginScreenState
                           ),
                     ).animate().fadeIn(delay: 120.ms),
                     const SizedBox(height: 32),
-                    Card(
-                      color: AppColors.surfaceElevated,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (_errorMessage != null) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.danger
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: AppColors.danger
-                                          .withValues(alpha: 0.4),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: const TextStyle(
-                                      color: AppColors.danger,
-                                      fontSize: 13,
-                                    ),
+                    AppCard(
+                      color: AppColors.surface.withValues(alpha: 0.9),
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (_errorMessage != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.danger.withValues(alpha: 0.12),
+                                  borderRadius: AppRadii.chipBr,
+                                  border: Border.all(
+                                    color:
+                                        AppColors.danger.withValues(alpha: 0.4),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                              ],
-                              TextFormField(
-                                controller: _email,
-                                keyboardType: TextInputType.emailAddress,
-                                autocorrect: false,
-                                decoration: const InputDecoration(
-                                  labelText: 'Admin email',
-                                  prefixIcon: Icon(Icons.admin_panel_settings),
+                                child: Text(
+                                  _errorMessage!,
+                                  style: const TextStyle(
+                                    color: AppColors.danger,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                                validator: (v) {
-                                  if (v == null || v.trim().isEmpty) {
-                                    return 'Enter your admin email';
-                                  }
-                                  if (!v.contains('@')) {
-                                    return 'Enter a valid email';
-                                  }
-                                  return null;
-                                },
                               ),
-                              const SizedBox(height: 14),
-                              TextFormField(
-                                controller: _password,
-                                obscureText: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: Icon(Icons.lock_outline_rounded),
-                                ),
-                                validator: (v) {
-                                  if (v == null || v.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 22),
-                              FilledButton(
-                                onPressed: _isLoading ? null : _submit,
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Sign In to Admin Portal'),
-                              ),
+                              const SizedBox(height: 16),
                             ],
-                          ),
+                            TextFormField(
+                              controller: _email,
+                              keyboardType: TextInputType.emailAddress,
+                              autocorrect: false,
+                              decoration: const InputDecoration(
+                                labelText: 'Admin email',
+                                prefixIcon: Icon(Icons.admin_panel_settings),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Enter your admin email';
+                                }
+                                if (!v.contains('@')) {
+                                  return 'Enter a valid email';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _password,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon: Icon(Icons.lock_outline_rounded),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.length < 6) {
+                                  return 'Password must be at least 6 characters';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 22),
+                            FilledButton(
+                              onPressed: _isLoading ? null : _submit,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Sign In to Admin Portal'),
+                            ),
+                          ],
                         ),
                       ),
                     ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.05),

@@ -17,7 +17,15 @@ final tasksStreamProvider = StreamProvider<List<RoutineTask>>((ref) {
     return Stream.value(const []);
   }
 
-  return repo.watchTasks(auth.uid);
+  return Stream<List<RoutineTask>>.multi((controller) {
+    final sub = repo.watchTasks(auth.uid).listen(
+      controller.add,
+      onError: (_) {
+        if (!controller.isClosed) controller.add(const []);
+      },
+    );
+    controller.onCancel = sub.cancel;
+  });
 });
 
 /// Routine complete when there is at least one task and all are done.

@@ -4,6 +4,7 @@ import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/enrollment/presentation/widgets/gym_pass_card.dart';
 import 'package:aerofit/features/settings/presentation/widgets/report_issue_dialog.dart';
 import 'package:aerofit/features/settings/providers/settings_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -160,32 +161,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       fontWeight: FontWeight.w800,
                     ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                email.isNotEmpty ? email : 'Account',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-              ),
-              const SizedBox(height: 24),
-            ] else ...[
-              Text(
-                email.isNotEmpty ? email : 'Account',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-              ),
               const SizedBox(height: 16),
             ],
+            _AccountHeader(email: email),
+            const SizedBox(height: 16),
             const GymPassCard(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Card(
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(
-                      Icons.lock_reset_rounded,
-                      color: AppColors.primary,
+                    contentPadding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
+                    leading: const IconChip(
+                      icon: Icons.lock_reset_rounded,
+                      color: AppColors.info,
+                      size: 38,
                     ),
                     title: const Text('Reset Password'),
                     subtitle: const Text(
@@ -202,9 +192,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
-                    leading: const Icon(
-                      Icons.report_gmailerrorred_rounded,
-                      color: AppColors.primary,
+                    contentPadding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
+                    leading: const IconChip(
+                      icon: Icons.report_gmailerrorred_rounded,
+                      color: AppColors.warning,
+                      size: 38,
                     ),
                     title: const Text('Report an Issue'),
                     subtitle: const Text('Tell us what went wrong'),
@@ -220,13 +212,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             FilledButton.icon(
               onPressed: _isLoggingOut ? null : _logout,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: AppColors.textPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: AppColors.danger.withValues(alpha: 0.14),
+                foregroundColor: AppColors.danger,
+                disabledBackgroundColor:
+                    AppColors.danger.withValues(alpha: 0.08),
+                disabledForegroundColor: AppColors.danger,
+                side:
+                    BorderSide(color: AppColors.danger.withValues(alpha: 0.4)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               icon: _isLoggingOut
                   ? const SizedBox(
@@ -234,7 +231,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppColors.textPrimary,
+                        color: AppColors.danger,
                       ),
                     )
                   : const Icon(Icons.logout_rounded),
@@ -276,6 +273,65 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AccountHeader extends StatelessWidget {
+  const _AccountHeader({required this.email});
+
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = email.isEmpty ? 'A' : email[0].toUpperCase();
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primary.withValues(alpha: 0.14),
+              border: Border.all(color: AppColors.primary, width: 1.5),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Account',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  email.isNotEmpty ? email : 'Signed in',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -109,7 +109,8 @@ class _BuildMyRoutineDialogState extends ConsumerState<BuildMyRoutineDialog> {
     final splitsRepo = ref.read(workoutSplitsRepositoryProvider);
     final exercisesRepo = ref.read(exercisesRepositoryProvider);
     if (uid == null || splitsRepo == null || exercisesRepo == null) {
-      setState(() => _exercisesError = 'Not signed in or Firebase unavailable.');
+      setState(
+          () => _exercisesError = 'Not signed in or Firebase unavailable.');
       return;
     }
 
@@ -204,7 +205,7 @@ class _BuildMyRoutineDialogState extends ConsumerState<BuildMyRoutineDialog> {
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF252B38)),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Text(
                       'No exercises added yet. Pick from the 729-exercise library or add a custom one.',
@@ -226,7 +227,7 @@ class _BuildMyRoutineDialogState extends ConsumerState<BuildMyRoutineDialog> {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF252B38)),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Row(
                         children: [
@@ -266,7 +267,8 @@ class _BuildMyRoutineDialogState extends ConsumerState<BuildMyRoutineDialog> {
                   const SizedBox(height: 4),
                   Text(
                     _exercisesError!,
-                    style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                    style:
+                        const TextStyle(color: AppColors.danger, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 8),

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "189303398586",
+    "firebase_url": "https://aerofit-303c9-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "aerofit-303c9",
+    "storage_bucket": "aerofit-303c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189303398586:android:63986382d0f9b66319a283",
+        "android_client_info": {
+          "package_name": "com.aerofit.aerofit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "189303398586-p6ljciupb4lpebe00vevov5n6dalj4p1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aerofit.aerofit",
+            "certificate_hash": "af94b17927eb41fe1ecedf0ae9002ef81305e1eb"
+          }
+        },
+        {
+          "client_id": "189303398586-nbum19rkc9lh4dr5qd5qeus906t0iis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtxBI3_3LMoDvSk5E7XRZFamdbfrO-KC4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "189303398586-nbum19rkc9lh4dr5qd5qeus906t0iis8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

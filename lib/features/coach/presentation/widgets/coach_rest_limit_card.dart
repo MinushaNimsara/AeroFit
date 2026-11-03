@@ -88,7 +88,7 @@ class _CoachRestLimitCardState extends ConsumerState<CoachRestLimitCard> {
                               'Rest limit saved: ${_restLimit.round()} minutes for all gym trainees.',
                             ),
                             behavior: SnackBarBehavior.floating,
-                            backgroundColor: AppColors.win,
+                            backgroundColor: AppColors.winSurface,
                           ),
                         );
                       } catch (e) {
@@ -96,7 +96,7 @@ class _CoachRestLimitCardState extends ConsumerState<CoachRestLimitCard> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Could not save rest limit: $e'),
-                            backgroundColor: AppColors.danger,
+                            backgroundColor: AppColors.dangerSurface,
                           ),
                         );
                       } finally {

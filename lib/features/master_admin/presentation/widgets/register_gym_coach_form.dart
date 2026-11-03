@@ -50,8 +50,7 @@ class _RegisterGymCoachFormState extends ConsumerState<RegisterGymCoachForm> {
   @override
   Widget build(BuildContext context) {
     final registration = ref.watch(coachRegistrationProvider);
-    final isLoading =
-        registration.status == CoachRegistrationStatus.loading;
+    final isLoading = registration.status == CoachRegistrationStatus.loading;
 
     ref.listen<CoachRegistrationState>(coachRegistrationProvider, (_, next) {
       if (next.status == CoachRegistrationStatus.success) {
@@ -63,7 +62,7 @@ class _RegisterGymCoachFormState extends ConsumerState<RegisterGymCoachForm> {
       color: AppColors.surfaceElevated,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadii.tileBr,
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

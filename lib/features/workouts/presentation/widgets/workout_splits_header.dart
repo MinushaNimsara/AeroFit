@@ -226,23 +226,22 @@ class _SplitChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected ? AppColors.primary : AppColors.surfaceElevated,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadii.pillBr,
       child: InkWell(
         onTap: onSelect,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadii.pillBr,
         child: Padding(
-          padding: const EdgeInsets.only(left: 12, right: 4),
+          padding: const EdgeInsets.only(left: 14, right: 6),
           child: SizedBox(
-            height: 36,
+            height: 38,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   split.name,
                   style: TextStyle(
-                    color: selected
-                        ? AppColors.background
-                        : AppColors.textPrimary,
+                    color:
+                        selected ? AppColors.background : AppColors.textPrimary,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 13,
                   ),
@@ -272,7 +271,8 @@ class _SplitChip extends StatelessWidget {
 }
 
 class _EmptySplitsHint extends StatelessWidget {
-  const _EmptySplitsHint({required this.onCreate, required this.onBuildRoutine});
+  const _EmptySplitsHint(
+      {required this.onCreate, required this.onBuildRoutine});
 
   final VoidCallback onCreate;
   final VoidCallback onBuildRoutine;
@@ -283,8 +283,9 @@ class _EmptySplitsHint extends StatelessWidget {
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.surface,
+        borderRadius: AppRadii.cardBr,
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [

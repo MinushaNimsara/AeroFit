@@ -49,11 +49,11 @@ class TraineeProfileSheet extends ConsumerWidget {
         return Container(
           decoration: const BoxDecoration(
             color: AppColors.surfaceElevated,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(
-              top: BorderSide(color: Color(0xFF252B38)),
-              left: BorderSide(color: Color(0xFF252B38)),
-              right: BorderSide(color: Color(0xFF252B38)),
+              top: BorderSide(color: AppColors.border),
+              left: BorderSide(color: AppColors.border),
+              right: BorderSide(color: AppColors.border),
             ),
           ),
           child: profileAsync.when(
@@ -122,7 +122,8 @@ class TraineeProfileSheet extends ConsumerWidget {
                     label: const Text('Assign Schedule'),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.18),
+                      backgroundColor:
+                          AppColors.primary.withValues(alpha: 0.18),
                       foregroundColor: AppColors.primary,
                     ),
                   ),
@@ -157,7 +158,7 @@ class TraineeProfileSheet extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF252B38)),
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           children: [
@@ -288,7 +289,7 @@ class _MiniStat extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF252B38)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,7 +322,7 @@ class _MiniStat extends StatelessWidget {
                     minHeight: 32,
                   ),
                   style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFF2A3344),
+                    backgroundColor: AppColors.surfaceHighest,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                       side: BorderSide(
@@ -533,7 +534,8 @@ class _NudgeTraineeButton extends ConsumerStatefulWidget {
   final bool emphasized;
 
   @override
-  ConsumerState<_NudgeTraineeButton> createState() => _NudgeTraineeButtonState();
+  ConsumerState<_NudgeTraineeButton> createState() =>
+      _NudgeTraineeButtonState();
 }
 
 class _NudgeTraineeButtonState extends ConsumerState<_NudgeTraineeButton> {
@@ -669,7 +671,7 @@ class _WorkoutHistorySection extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF252B38)),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -795,7 +797,7 @@ class _EmptyBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF252B38)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         message,

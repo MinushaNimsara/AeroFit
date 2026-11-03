@@ -59,7 +59,7 @@ class _ShimmerRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF252B38)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -108,9 +108,9 @@ class _ShimmerBox extends StatelessWidget {
           begin: Alignment(-1 + slide, 0),
           end: Alignment(1 + slide, 0),
           colors: const [
-            Color(0xFF1A2030),
-            Color(0xFF2A3142),
-            Color(0xFF1A2030),
+            AppColors.surfaceElevated,
+            AppColors.borderStrong,
+            AppColors.surfaceElevated,
           ],
         ),
       ),

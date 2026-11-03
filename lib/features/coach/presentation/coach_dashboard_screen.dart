@@ -9,6 +9,7 @@ import 'package:aerofit/features/coach/presentation/widgets/coach_trainee_roster
 import 'package:aerofit/features/coach/providers/coach_dashboard_providers.dart';
 import 'package:aerofit/features/settings/providers/settings_providers.dart';
 import 'package:aerofit/shared/widgets/settings_gear_button.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,20 +49,13 @@ class CoachDashboardScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_rounded),
         label: const Text('Routine'),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0A0C12), Color(0xFF151C2E), Color(0xFF0D0F14)],
-          ),
-        ),
+      body: AppBackground(
         child: SafeArea(
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
                 pinned: true,
-                backgroundColor: Colors.transparent,
+                backgroundColor: AppColors.background.withValues(alpha: 0.85),
                 actions: [
                   const Padding(
                     padding: EdgeInsets.only(right: 8),
@@ -93,7 +87,9 @@ class CoachDashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 6),
                       Text(
                         gymName,
-                        style: Theme.of(context).textTheme.titleMedium
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
                             ?.copyWith(color: AppColors.primary),
                       ),
                     ],
@@ -112,8 +108,8 @@ class CoachDashboardScreen extends ConsumerWidget {
                     CoachTraineeRoster(
                       members: rosterAsync.valueOrNull ?? const [],
                       totalCount: fullRosterAsync.valueOrNull?.length ?? 0,
-                      isLoading:
-                          rosterAsync.isLoading && rosterAsync.valueOrNull == null,
+                      isLoading: rosterAsync.isLoading &&
+                          rosterAsync.valueOrNull == null,
                       error: rosterAsync.error,
                     ).animate().fadeIn(delay: 180.ms, duration: 400.ms),
                     const SizedBox(height: 20),

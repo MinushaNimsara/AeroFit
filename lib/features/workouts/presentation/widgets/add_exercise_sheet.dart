@@ -367,7 +367,8 @@ class _SelectedLibraryExerciseCard extends StatelessWidget {
           ),
           IconButton(
             onPressed: onClear,
-            icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+            icon:
+                const Icon(Icons.close_rounded, color: AppColors.textSecondary),
             tooltip: 'Choose a different exercise',
           ),
         ],
@@ -425,7 +426,7 @@ void showAddExerciseSheet(
     isScrollControlled: true,
     backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (_) => AddExerciseSheet(
       initialSplitId: splitId,

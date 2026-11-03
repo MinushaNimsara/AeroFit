@@ -103,11 +103,17 @@ Skips init if `DefaultFirebaseOptions.isConfigured` is false (demo dashboard).
 
 Firebase Console → **Authentication** → **Settings** → **Authorized domains**
 
-Add:
+Web Google Sign-In uses the same GIS + Identity Toolkit path as Android. Domains must include:
 
 - `localhost` (dev)
-- Your Vercel domain: `your-app.vercel.app`
-- Custom domain if configured
+- Vercel project domain (this repo): `aero-fit-slul.vercel.app`
+- Any custom domain pointed at Vercel
+
+Also confirm **Authentication → Sign-in method → Google** is enabled, and the Web OAuth client id matches:
+
+`189303398586-nbum19rkc9lh4dr5qd5qeus906t0iis8.apps.googleusercontent.com`
+
+(used as `GoogleSignIn.clientId` / `serverClientId` in `lib/features/auth/data/auth_repository.dart`).
 
 ---
 

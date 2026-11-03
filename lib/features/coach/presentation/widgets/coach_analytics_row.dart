@@ -36,7 +36,8 @@ class CoachAnalyticsRow extends StatelessWidget {
             child: _StatPill(
               label: 'Active Now',
               value: activeLoading ? '—' : '$activeNow',
-              icon: const Icon(Icons.bolt_rounded, color: AppColors.win, size: 22),
+              icon: const Icon(Icons.bolt_rounded,
+                  color: AppColors.win, size: 22),
               accent: AppColors.win,
               loading: activeLoading,
               pulse: activeNow > 0,
@@ -90,7 +91,7 @@ class _StatPill extends StatelessWidget {
             AppColors.surfaceElevated,
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadii.tileBr,
         border: Border.all(color: accent.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(

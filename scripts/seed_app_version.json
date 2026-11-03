@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 9,
-  "latestVersionName": "1.0.8",
-  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.8/aerofit-1.0.8.apk",
+  "latestVersionCode": 10,
+  "latestVersionName": "1.0.9",
+  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.9/aerofit-1.0.9.apk",
   "forceUpdate": false,
   "minVersionCode": 4,
-  "releaseNotes": "Back exercise demo GIFs update (rows, pulldowns, Meadows, face pulls)"
+  "releaseNotes": "New look: modern dark UI with lime accents, floating nav bar, redesigned hub, login and all screens"
 }

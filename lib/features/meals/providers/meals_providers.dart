@@ -24,7 +24,15 @@ final todayMealsStreamProvider = StreamProvider<List<MealEntry>>((ref) {
     return Stream.value(const []);
   }
 
-  return repo.watchTodayMeals(auth.uid);
+  return Stream<List<MealEntry>>.multi((controller) {
+    final sub = repo.watchTodayMeals(auth.uid).listen(
+      controller.add,
+      onError: (_) {
+        if (!controller.isClosed) controller.add(const []);
+      },
+    );
+    controller.onCancel = sub.cancel;
+  });
 });
 
 final todayCaloriesTotalProvider = Provider<int>((ref) {

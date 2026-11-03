@@ -1,6 +1,7 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/analytics/domain/weekly_report.dart';
 import 'package:aerofit/features/analytics/providers/analytics_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -129,7 +130,7 @@ class _SummaryCards extends StatelessWidget {
             label: 'Workouts',
             value: '${report.totalWorkouts}',
             subtitle: 'this week',
-            color: AppColors.primary,
+            color: AppColors.info,
           ),
         ),
         const SizedBox(width: 10),
@@ -149,7 +150,7 @@ class _SummaryCards extends StatelessWidget {
             label: 'Routine',
             value: '${(report.routineCompletionRate * 100).round()}%',
             subtitle: 'completion',
-            color: AppColors.win,
+            color: AppColors.warning,
           ),
         ),
       ],
@@ -174,24 +175,28 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF252B38)),
-      ),
+      radius: AppRadii.tileBr,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+          IconChip(icon: icon, color: color, size: 30),
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                height: 1.1,
+              ),
+            ),
           ),
+          const SizedBox(height: 2),
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -235,11 +240,11 @@ class _ActivityMatrix extends StatelessWidget {
             const SizedBox(height: 16),
             const Row(
               children: [
-                _LegendDot(color: AppColors.primary, label: 'Routine'),
+                _LegendDot(color: AppColors.warning, label: 'Routine'),
                 SizedBox(width: 14),
                 _LegendDot(color: AppColors.accent, label: 'Calories'),
                 SizedBox(width: 14),
-                _LegendDot(color: AppColors.win, label: 'Gym'),
+                _LegendDot(color: AppColors.info, label: 'Gym'),
               ],
             ),
           ],
@@ -271,19 +276,21 @@ class _DayBar extends StatelessWidget {
             children: [
               _BarSegment(
                 height: routineH,
-                color: AppColors.primary,
+                color: AppColors.warning,
                 maxHeight: maxHeight,
               ),
               const SizedBox(width: 2),
               _BarSegment(
                 height: calorieH,
-                color: day.dietOnTarget ? AppColors.win : AppColors.accent,
+                color: day.dietOnTarget
+                    ? AppColors.accent
+                    : AppColors.accent.withValues(alpha: 0.5),
                 maxHeight: maxHeight,
               ),
               const SizedBox(width: 2),
               _BarSegment(
                 height: gymH,
-                color: AppColors.win,
+                color: AppColors.info,
                 maxHeight: maxHeight,
               ),
             ],
@@ -293,7 +300,8 @@ class _DayBar extends StatelessWidget {
         Text(
           day.dayLabel,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: day.isToday ? AppColors.primary : AppColors.textSecondary,
+                color:
+                    day.isToday ? AppColors.primary : AppColors.textSecondary,
                 fontWeight: day.isToday ? FontWeight.w700 : FontWeight.w500,
               ),
         ),
@@ -318,11 +326,11 @@ class _BarSegment extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutCubic,
-      width: 8,
+      width: 9,
       height: height.clamp(4, maxHeight),
       decoration: BoxDecoration(
         color: height > 4 ? color : color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.pillBr,
       ),
     );
   }
@@ -429,11 +437,10 @@ class _StreakCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.tileBr,
         border: Border.all(
-          color: active
-              ? AppColors.win.withValues(alpha: 0.35)
-              : const Color(0xFF252B38),
+          color:
+              active ? AppColors.win.withValues(alpha: 0.35) : AppColors.border,
         ),
       ),
       child: Column(
@@ -445,7 +452,8 @@ class _StreakCard extends StatelessWidget {
             value,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: active ? AppColors.textPrimary : AppColors.textSecondary,
+                  color:
+                      active ? AppColors.textPrimary : AppColors.textSecondary,
                 ),
           ),
           Text(
@@ -486,8 +494,8 @@ class _AchievementTile extends StatelessWidget {
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF252B38)),
+        borderRadius: AppRadii.tileBr,
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         message,

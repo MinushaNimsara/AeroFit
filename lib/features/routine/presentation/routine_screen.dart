@@ -2,6 +2,7 @@ import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/routine/domain/routine_task.dart';
 import 'package:aerofit/features/routine/providers/tasks_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -111,8 +112,6 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                           size: 18,
                           color: AppColors.accent,
                         ),
-                        backgroundColor: AppColors.surfaceElevated,
-                        side: const BorderSide(color: Color(0xFF252B38)),
                         onPressed: _isAdding ? null : () => _addTask(label),
                       ),
                   ],
@@ -125,31 +124,9 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                         controller: _taskController,
                         textInputAction: TextInputAction.done,
                         onSubmitted: _isAdding ? null : _addTask,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: 'Add a daily task…',
-                          filled: true,
-                          fillColor: AppColors.surface,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide:
-                                const BorderSide(color: Color(0xFF252B38)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide:
-                                const BorderSide(color: Color(0xFF252B38)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: AppColors.primary,
-                              width: 1.5,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
+                          prefixIcon: Icon(Icons.add_task_rounded),
                         ),
                       ),
                     ),
@@ -160,11 +137,8 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                           : () => _addTask(_taskController.text),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
+                          horizontal: 22,
                           vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: _isAdding
@@ -203,7 +177,8 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                           Icon(
                             Icons.checklist_rounded,
                             size: 48,
-                            color: AppColors.textSecondary.withValues(alpha: 0.5),
+                            color:
+                                AppColors.textSecondary.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -232,14 +207,12 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        '$completed of ${tasks.length} complete',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                      child: _RoutineProgress(
+                        completed: completed,
+                        total: tasks.length,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Expanded(
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -272,6 +245,65 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
   }
 }
 
+class _RoutineProgress extends StatelessWidget {
+  const _RoutineProgress({required this.completed, required this.total});
+
+  final int completed;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = total > 0 ? completed / total : 0.0;
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '$completed',
+                style: const TextStyle(
+                  color: AppColors.warning,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '/ $total complete',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${(progress * 100).round()}%',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: AppRadii.pillBr,
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              color: AppColors.warning,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TaskTile extends StatelessWidget {
   const _TaskTile({
     required this.task,
@@ -293,37 +325,34 @@ class _TaskTile extends StatelessWidget {
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
           color: AppColors.danger.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadii.tileBr,
         ),
-        child: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+        child:
+            const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
       ),
       onDismissed: (_) => onDelete(),
       child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.tileBr,
         child: InkWell(
           onTap: () => onToggle(!task.isCompleted),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadii.tileBr,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: AppRadii.tileBr,
               border: Border.all(
                 color: task.isCompleted
-                    ? AppColors.win.withValues(alpha: 0.35)
-                    : const Color(0xFF252B38),
+                    ? AppColors.primary.withValues(alpha: 0.35)
+                    : AppColors.border,
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
               child: Row(
                 children: [
                   Checkbox(
                     value: task.isCompleted,
                     onChanged: onToggle,
-                    activeColor: AppColors.win,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
                   ),
                   Expanded(
                     child: Text(

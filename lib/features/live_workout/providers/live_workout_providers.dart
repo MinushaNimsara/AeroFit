@@ -18,7 +18,8 @@ final liveWorkoutStatusProvider = StreamProvider<LiveWorkoutStatus>((ref) {
 });
 
 final traineeWorkoutHistoryProvider =
-    StreamProvider.family<List<WorkoutSessionHistory>, String>((ref, traineeUid) {
+    StreamProvider.family<List<WorkoutSessionHistory>, String>(
+        (ref, traineeUid) {
   return ref
       .watch(liveWorkoutRepositoryProvider)
       .watchRecentWorkoutHistory(traineeUid);
@@ -113,7 +114,8 @@ class LiveWorkoutController {
       _ref.read(liveWorkoutSessionIndexProvider.notifier).state = index + 1;
     }
 
-    final nextExercise = exerciseFinished ? (nextExerciseName ?? '') : exerciseName;
+    final nextExercise =
+        exerciseFinished ? (nextExerciseName ?? '') : exerciseName;
     final nextSets = exerciseFinished ? 0 : completedSets;
 
     await _repo.updateSetProgress(
@@ -135,8 +137,30 @@ class LiveWorkoutController {
       uid: uid,
       currentExercise: currentWorkout,
       completedSets: status?.completedSets ?? 0,
-      totalSets: status?.totalSets ?? LiveWorkoutRepository.defaultSetsPerExercise,
+      totalSets:
+          status?.totalSets ?? LiveWorkoutRepository.defaultSetsPerExercise,
       completedWorkouts: status?.completedWorkouts ?? const [],
+      status: 'working',
+    );
+  }
+
+  /// Jump to any incomplete exercise (not forced order).
+  Future<void> selectExercise({
+    required int index,
+    required String exerciseName,
+    required List<String> completedExerciseIds,
+  }) async {
+    final uid = _uid;
+    if (uid == null) return;
+    _ref.read(liveWorkoutSessionIndexProvider.notifier).state = index;
+    final status = _ref.read(liveWorkoutStatusProvider).valueOrNull;
+    await _repo.updateSetProgress(
+      uid: uid,
+      currentExercise: exerciseName,
+      completedSets: 0,
+      totalSets:
+          status?.totalSets ?? LiveWorkoutRepository.defaultSetsPerExercise,
+      completedWorkouts: completedExerciseIds,
       status: 'working',
     );
   }

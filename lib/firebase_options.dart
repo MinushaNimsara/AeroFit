@@ -42,17 +42,16 @@ class DefaultFirebaseOptions {
     measurementId: 'G-6R4F836N5R',
   );
 
-  // Mobile/desktop reuse web project credentials until platform apps are added.
+  // From android/app/google-services.json (Android app, not web).
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB7-Zjv0tYvxrlCmpIgJSb4Yyjj1vhPfnE',
-    appId: '1:189303398586:web:fe42f84f37fab85419a283',
+    apiKey: 'AIzaSyBtxBI3_3LMoDvSk5E7XRZFamdbfrO-KC4',
+    appId: '1:189303398586:android:63986382d0f9b66319a283',
     messagingSenderId: '189303398586',
     projectId: 'aerofit-303c9',
     authDomain: 'aerofit-303c9.firebaseapp.com',
     databaseURL:
         'https://aerofit-303c9-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'aerofit-303c9.firebasestorage.app',
-    measurementId: 'G-6R4F836N5R',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

@@ -22,7 +22,7 @@ class CoachSlackingSection extends StatelessWidget {
         border: Border.all(
           color: hasAlerts
               ? AppColors.warning.withValues(alpha: 0.95)
-              : const Color(0xFF252B38),
+              : AppColors.border,
           width: hasAlerts ? 2.5 : 1,
         ),
         boxShadow: hasAlerts
@@ -48,7 +48,7 @@ class CoachSlackingSection extends StatelessWidget {
       child: Card(
         margin: EdgeInsets.zero,
         color: AppColors.surfaceElevated,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.tileBr),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -64,8 +64,7 @@ class CoachSlackingSection extends StatelessWidget {
                     ),
                     child: AlertIcon(
                       color: hasAlerts ? AppColors.warning : AppColors.danger,
-                      backgroundColor:
-                          AppColors.danger.withValues(alpha: 0.15),
+                      backgroundColor: AppColors.danger.withValues(alpha: 0.15),
                       size: 24,
                     ),
                   ),
@@ -118,7 +117,7 @@ class CoachSlackingSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF252B38)),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
                         'All trainees are on track — no rest violations right now.',
@@ -180,9 +179,9 @@ class _SlackingAlertCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AlertIcon(
+          AlertIcon(
             color: AppColors.warning,
-            backgroundColor: Color(0x33FF6B6B),
+            backgroundColor: AppColors.danger.withValues(alpha: 0.2),
             size: 22,
           ),
           const SizedBox(width: 12),

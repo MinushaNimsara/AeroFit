@@ -5,6 +5,7 @@ import 'package:aerofit/features/enrollment/presentation/enroll_scanner_screen.d
 import 'package:aerofit/features/enrollment/presentation/widgets/enroll_member_card.dart';
 import 'package:aerofit/features/enrollment/providers/gym_enrollment_providers.dart';
 import 'package:aerofit/features/settings/providers/settings_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -50,14 +51,7 @@ class _CoachSettingsScreenState extends ConsumerState<CoachSettingsScreen> {
     final displayName = profile?.displayName ?? 'Coach';
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0A0C12), Color(0xFF151C2E), Color(0xFF0D0F14)],
-          ),
-        ),
+      body: AppBackground(
         child: SafeArea(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -103,9 +97,15 @@ class _CoachSettingsScreenState extends ConsumerState<CoachSettingsScreen> {
               FilledButton.icon(
                 onPressed: _isLoggingOut ? null : _logout,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                  foregroundColor: AppColors.textPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: AppColors.danger.withValues(alpha: 0.14),
+                  foregroundColor: AppColors.danger,
+                  disabledBackgroundColor:
+                      AppColors.danger.withValues(alpha: 0.08),
+                  disabledForegroundColor: AppColors.danger,
+                  side: BorderSide(
+                    color: AppColors.danger.withValues(alpha: 0.4),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 icon: _isLoggingOut
                     ? const SizedBox(
@@ -113,7 +113,7 @@ class _CoachSettingsScreenState extends ConsumerState<CoachSettingsScreen> {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.textPrimary,
+                          color: AppColors.danger,
                         ),
                       )
                     : const Icon(Icons.logout_rounded),

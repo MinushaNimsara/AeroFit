@@ -2,6 +2,7 @@ import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/exercise_library/domain/exercise.dart';
 import 'package:aerofit/features/exercise_library/presentation/widgets/exercise_demo_stage.dart';
 import 'package:aerofit/features/exercise_library/providers/exercise_library_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -90,19 +91,26 @@ class _ExerciseDetailBody extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _Badge(label: exercise.difficultyLabel, color: _difficultyColor),
+                _Badge(
+                    label: exercise.difficultyLabel, color: _difficultyColor),
                 if (exercise.exerciseType.isNotEmpty)
-                  _Badge(label: exercise.exerciseType, color: AppColors.primary),
+                  _Badge(
+                      label: exercise.exerciseType, color: AppColors.primary),
                 if (exercise.movementPattern.isNotEmpty)
-                  _Badge(label: exercise.movementPattern, color: AppColors.accent),
-                if (exercise.unilateral) const _Badge(label: 'Unilateral', color: AppColors.warning),
+                  _Badge(
+                      label: exercise.movementPattern, color: AppColors.accent),
+                if (exercise.unilateral)
+                  const _Badge(label: 'Unilateral', color: AppColors.warning),
               ],
             ),
             const SizedBox(height: 24),
             _Section(
               title: 'Equipment',
               icon: Icons.fitness_center_rounded,
-              child: _ChipWrap(items: exercise.equipment.isEmpty ? const ['Bodyweight'] : exercise.equipment),
+              child: _ChipWrap(
+                  items: exercise.equipment.isEmpty
+                      ? const ['Bodyweight']
+                      : exercise.equipment),
             ),
             if (exercise.secondaryMuscles.isNotEmpty)
               _Section(
@@ -131,7 +139,8 @@ class _ExerciseDetailBody extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (exercise.startingPosition.isNotEmpty)
-                      _LabeledText(label: 'Start', text: exercise.startingPosition),
+                      _LabeledText(
+                          label: 'Start', text: exercise.startingPosition),
                     if (exercise.endingPosition.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _LabeledText(label: 'End', text: exercise.endingPosition),
@@ -150,25 +159,29 @@ class _ExerciseDetailBody extends StatelessWidget {
               _Section(
                 title: 'Tips',
                 icon: Icons.tips_and_updates_rounded,
-                child: _BulletList(items: exercise.tips, color: AppColors.accent),
+                child:
+                    _BulletList(items: exercise.tips, color: AppColors.accent),
               ),
             if (exercise.commonMistakes.isNotEmpty)
               _Section(
                 title: 'Common mistakes',
                 icon: Icons.error_outline_rounded,
-                child: _BulletList(items: exercise.commonMistakes, color: AppColors.warning),
+                child: _BulletList(
+                    items: exercise.commonMistakes, color: AppColors.warning),
               ),
             if (exercise.benefits.isNotEmpty)
               _Section(
                 title: 'Benefits',
                 icon: Icons.favorite_rounded,
-                child: _BulletList(items: exercise.benefits, color: AppColors.win),
+                child:
+                    _BulletList(items: exercise.benefits, color: AppColors.win),
               ),
             if (exercise.safetyNotes.isNotEmpty)
               _Section(
                 title: 'Safety notes',
                 icon: Icons.shield_rounded,
-                child: _BulletList(items: exercise.safetyNotes, color: AppColors.danger),
+                child: _BulletList(
+                    items: exercise.safetyNotes, color: AppColors.danger),
               ),
             if (exercise.tags.isNotEmpty)
               _Section(
@@ -186,7 +199,8 @@ class _ExerciseDetailBody extends StatelessWidget {
               _Section(
                 title: 'Alternative exercises',
                 icon: Icons.swap_horiz_rounded,
-                child: _RelatedExerciseList(exerciseIds: exercise.alternativeExercises),
+                child: _RelatedExerciseList(
+                    exerciseIds: exercise.alternativeExercises),
               ),
           ],
         ),
@@ -212,14 +226,16 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+        style:
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.icon, required this.child});
+  const _Section(
+      {required this.title, required this.icon, required this.child});
 
   final String title;
   final IconData icon;
@@ -228,25 +244,27 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconChip(icon: icon, color: AppColors.primary, size: 26),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -269,11 +287,12 @@ class _ChipWrap extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF252B38)),
+                border: Border.all(color: AppColors.border),
               ),
               child: Text(
                 item,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                style:
+                    const TextStyle(color: AppColors.textPrimary, fontSize: 13),
               ),
             ),
           )
@@ -319,7 +338,8 @@ class _NumberedList extends StatelessWidget {
                 Expanded(
                   child: Text(
                     items[i],
-                    style: const TextStyle(color: AppColors.textPrimary, height: 1.4),
+                    style: const TextStyle(
+                        color: AppColors.textPrimary, height: 1.4),
                   ),
                 ),
               ],
@@ -352,14 +372,16 @@ class _BulletList extends StatelessWidget {
                   child: Container(
                     width: 6,
                     height: 6,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     item,
-                    style: const TextStyle(color: AppColors.textPrimary, height: 1.4),
+                    style: const TextStyle(
+                        color: AppColors.textPrimary, height: 1.4),
                   ),
                 ),
               ],
@@ -380,11 +402,13 @@ class _LabeledText extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: TextSpan(
-        style: const TextStyle(color: AppColors.textPrimary, height: 1.4, fontSize: 14),
+        style: const TextStyle(
+            color: AppColors.textPrimary, height: 1.4, fontSize: 14),
         children: [
           TextSpan(
             text: '$label: ',
-            style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+                color: AppColors.textSecondary, fontWeight: FontWeight.w700),
           ),
           TextSpan(text: text),
         ],
@@ -409,11 +433,11 @@ class _Callout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.cardBr,
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
@@ -427,12 +451,14 @@ class _Callout extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13),
+                  style: TextStyle(
+                      color: color, fontWeight: FontWeight.w700, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   text,
-                  style: const TextStyle(color: AppColors.textPrimary, height: 1.4),
+                  style: const TextStyle(
+                      color: AppColors.textPrimary, height: 1.4),
                 ),
               ],
             ),
@@ -460,8 +486,9 @@ class _RelatedExerciseList extends ConsumerWidget {
         return ActionChip(
           label: Text(label),
           backgroundColor: AppColors.surfaceElevated,
-          side: const BorderSide(color: Color(0xFF252B38)),
-          labelStyle: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          side: const BorderSide(color: AppColors.border),
+          labelStyle:
+              const TextStyle(color: AppColors.textPrimary, fontSize: 13),
           onPressed: related == null
               ? null
               : () => context.push('/workouts/exercise/$id'),

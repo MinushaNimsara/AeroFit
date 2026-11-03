@@ -46,6 +46,12 @@ app.*.map.json
 .env
 .env.*
 !.env.example
+/secrets/dart_defines.json
+/secrets/.tmp-gkey
+.tmp-gkey
+.tmp-set-gemini-secret.txt
+PASTE_GEMINI_KEY_HERE.bat
+PASTE_GEMINI_KEY_HERE.ps1
 
 # Firebase (keep firebase_options.dart if team shares dev project; otherwise gitignore)
 # google-services.json
@@ -61,3 +67,4 @@ master admin user & pass.txt
 .tmp-*.png
 build_log.txt
 node_modules/
+.env*

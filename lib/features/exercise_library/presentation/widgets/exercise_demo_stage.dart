@@ -59,15 +59,8 @@ class ExerciseDemoStage extends StatelessWidget {
         decoration: BoxDecoration(
           color: stageFill,
           borderRadius: BorderRadius.circular(borderRadius),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.28),
-          ),
+          border: Border.all(color: AppColors.borderStrong),
           boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.35),
               blurRadius: 12,

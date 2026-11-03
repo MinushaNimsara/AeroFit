@@ -1,7 +1,11 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/dashboard/domain/daily_status.dart';
+import 'package:aerofit/features/dashboard/presentation/widgets/daily_goal_ring.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+/// Health overview grid: calories on top, routine and gym side by side.
 class StatusPillRow extends StatelessWidget {
   const StatusPillRow({super.key, required this.status});
 
@@ -9,92 +13,67 @@ class StatusPillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _Pill(
-            label: 'Routine',
-            done: status.routineComplete,
-            subtitle: status.routineComplete ? 'Done' : 'Pending',
-            icon: Icons.schedule_rounded,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _Pill(
-            label: 'Diet',
-            done: status.dietCloseToTarget,
-            subtitle:
-                '${status.caloriesConsumed} / ${status.calorieGoal} kcal',
-            icon: Icons.local_fire_department_rounded,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _Pill(
-            label: 'Gym',
-            done: status.workoutComplete,
-            subtitle: status.gymPillSubtitle,
-            icon: Icons.fitness_center_rounded,
-          ),
-        ),
-      ],
-    );
-  }
-}
+    final calorieProgress = status.calorieGoal > 0
+        ? status.caloriesConsumed / status.calorieGoal
+        : 0.0;
 
-class _Pill extends StatelessWidget {
-  const _Pill({
-    required this.label,
-    required this.done,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String label;
-  final bool done;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = done ? AppColors.win : AppColors.textSecondary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: done
-              ? AppColors.win.withValues(alpha: 0.4)
-              : const Color(0xFF252B38),
-        ),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(10),
       child: Column(
         children: [
-          Icon(
-            done ? Icons.check_circle_rounded : icon,
-            color: color,
-            size: 22,
+          StatTile(
+            label: 'Daily Calorie Intake',
+            icon: status.dietCloseToTarget
+                ? Icons.check_rounded
+                : Icons.local_fire_department_rounded,
+            color: AppColors.accent,
+            value: '${status.caloriesConsumed}',
+            suffix: '/ ${status.calorieGoal} kcal',
+            valueSize: 38,
+            onTap: () => context.go('/meals'),
+            trailing: DailyGoalRing(
+              progress: calorieProgress,
+              size: 64,
+              lineWidth: 6,
+              color: AppColors.accent,
+              center: const Icon(
+                Icons.restaurant_rounded,
+                color: AppColors.accent,
+                size: 22,
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: StatTile(
+                  label: 'Routine',
+                  icon: status.routineComplete
+                      ? Icons.check_rounded
+                      : Icons.schedule_rounded,
+                  color: AppColors.warning,
+                  value: '${status.tasksCompleted}',
+                  suffix: '/ ${status.tasksTotal} tasks',
+                  onTap: () => context.go('/routine'),
                 ),
-          ),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: done ? AppColors.win : AppColors.textSecondary,
-                  fontSize: 10,
-                  height: 1.2,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: StatTile(
+                  label: 'Gym',
+                  icon: status.workoutComplete
+                      ? Icons.check_rounded
+                      : Icons.fitness_center_rounded,
+                  color: AppColors.info,
+                  value: '${status.gymExercisesCompleted}',
+                  suffix: status.gymExercisesTotal == 0
+                      ? 'No exercises'
+                      : '/ ${status.gymExercisesTotal} done',
+                  onTap: () => context.go('/workouts'),
                 ),
+              ),
+            ],
           ),
         ],
       ),

@@ -5,6 +5,7 @@ import 'package:aerofit/features/master_admin/presentation/widgets/platform_anal
 import 'package:aerofit/features/master_admin/presentation/widgets/register_gym_coach_form.dart';
 import 'package:aerofit/features/master_admin/providers/master_admin_providers.dart';
 import 'package:aerofit/features/settings/providers/settings_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,35 +18,22 @@ class MasterAdminDashboardScreen extends ConsumerWidget {
     final displayName =
         ref.watch(authStateProvider).valueOrNull?.displayName ?? 'Admin';
     final registration = ref.watch(coachRegistrationProvider);
-    final isLoading =
-        registration.status == CoachRegistrationStatus.loading;
+    final isLoading = registration.status == CoachRegistrationStatus.loading;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0A0C12),
-              Color(0xFF151C2E),
-              Color(0xFF0D0F14),
-            ],
-          ),
-        ),
+      body: AppBackground(
         child: SafeArea(
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
                 pinned: true,
-                backgroundColor: Colors.transparent,
+                backgroundColor: AppColors.background.withValues(alpha: 0.85),
                 title: const Text('AeroFit Platform Admin'),
                 actions: [
                   TextButton(
                     onPressed: isLoading
                         ? null
-                        : () =>
-                            ref.read(settingsControllerProvider).logout(),
+                        : () => ref.read(settingsControllerProvider).logout(),
                     child: const Text('Log out'),
                   ),
                 ],
@@ -75,7 +63,8 @@ class MasterAdminDashboardScreen extends ConsumerWidget {
                         .slideY(begin: 0.04),
                     const SizedBox(height: 24),
                     _StatusBanner(state: registration),
-                    if (registration.message != null) const SizedBox(height: 20),
+                    if (registration.message != null)
+                      const SizedBox(height: 20),
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final isWide = constraints.maxWidth >= 960;
@@ -123,8 +112,7 @@ class _StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state.status == CoachRegistrationStatus.idle ||
-        state.message == null) {
+    if (state.status == CoachRegistrationStatus.idle || state.message == null) {
       return const SizedBox.shrink();
     }
 
@@ -146,7 +134,7 @@ class _StatusBanner extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.tileBr,
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(

@@ -98,7 +98,7 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_friendlyAnalysisError(e)),
-          backgroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerSurface,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 6),
         ),
@@ -110,8 +110,10 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
   String _friendlyAnalysisError(Object error) {
     final text = error.toString();
     if (text.contains('GEMINI_API_KEY') ||
-        text.contains('API key is not configured')) {
-      return 'Meal photo analysis is not configured. Ask the admin to set GEMINI_API_KEY.';
+        text.contains('API key is not configured') ||
+        text.contains('not configured') ||
+        text.contains('analyzeMeal')) {
+      return 'Meal photo analysis is not configured on the server yet.';
     }
     if (text.contains('403') || text.contains('PERMISSION_DENIED')) {
       return 'Meal analysis was denied (missing or invalid API key).';
@@ -271,10 +273,10 @@ class _OptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surfaceElevated,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppRadii.tileBr,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadii.tileBr,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -323,7 +325,7 @@ class _AnalyzingView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
         decoration: BoxDecoration(
           color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadii.tileBr,
           border: Border.all(
             color: AppColors.primary.withValues(alpha: 0.35),
           ),
@@ -479,7 +481,7 @@ void showLogMealSheet(BuildContext context, {bool manual = false}) {
     isScrollControlled: true,
     backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (_) => LogMealSheet(startWithManual: manual),
   );

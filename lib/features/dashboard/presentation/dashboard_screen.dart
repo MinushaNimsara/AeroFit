@@ -1,15 +1,15 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/features/auth/providers/auth_providers.dart';
 import 'package:aerofit/features/dashboard/domain/daily_status.dart';
-import 'package:aerofit/features/dashboard/presentation/widgets/daily_goal_ring.dart';
 import 'package:aerofit/features/dashboard/presentation/widgets/daily_win_loss_banner.dart';
-import 'package:aerofit/features/dashboard/presentation/widgets/remaining_tasks_card.dart';
 import 'package:aerofit/features/dashboard/presentation/widgets/status_pill_row.dart';
 import 'package:aerofit/features/dashboard/providers/dashboard_providers.dart';
 import 'package:aerofit/features/enrollment/presentation/widgets/gym_membership_banner.dart';
 import 'package:aerofit/features/meals/providers/meals_providers.dart';
 import 'package:aerofit/features/routine/providers/tasks_providers.dart';
 import 'package:aerofit/features/workouts/providers/exercises_providers.dart';
+import 'package:aerofit/shared/widgets/settings_gear_button.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,34 +39,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final displayName = ref.watch(displayNameProvider);
     final dateLabel = DateFormat('EEEE, MMM d').format(DateTime.now());
 
+    Future<void> refresh() async {
+      ref.invalidate(tasksStreamProvider);
+      ref.invalidate(todayMealsStreamProvider);
+      ref.invalidate(todayExercisesStreamProvider);
+      ref.invalidate(dailyStatusProvider);
+    }
+
     return Scaffold(
-      body: SafeArea(
-        child: statusAsync.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          ),
-          error: (e, _) => _DashboardBody(
-            displayName: displayName,
-            dateLabel: dateLabel,
-            status: DailyStatus.empty(),
-            offlineHint: true,
-            onRefresh: () async {
-              ref.invalidate(tasksStreamProvider);
-              ref.invalidate(todayMealsStreamProvider);
-              ref.invalidate(todayExercisesStreamProvider);
-              ref.invalidate(dailyStatusProvider);
-            },
-          ),
-          data: (status) => _DashboardBody(
-            displayName: displayName,
-            dateLabel: dateLabel,
-            status: status,
-            onRefresh: () async {
-              ref.invalidate(tasksStreamProvider);
-              ref.invalidate(todayMealsStreamProvider);
-              ref.invalidate(todayExercisesStreamProvider);
-              ref.invalidate(dailyStatusProvider);
-            },
+      backgroundColor: Colors.transparent,
+      body: AppBackground(
+        child: SafeArea(
+          bottom: false,
+          child: statusAsync.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+            error: (e, _) => _DashboardBody(
+              displayName: displayName,
+              dateLabel: dateLabel,
+              status: DailyStatus.empty(),
+              offlineHint: true,
+              onRefresh: refresh,
+            ),
+            data: (status) => _DashboardBody(
+              displayName: displayName,
+              dateLabel: dateLabel,
+              status: status,
+              onRefresh: refresh,
+            ),
           ),
         ),
       ),
@@ -93,6 +94,7 @@ class _DashboardBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: AppColors.primary,
+      backgroundColor: AppColors.surfaceElevated,
       onRefresh: onRefresh,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(
@@ -100,17 +102,26 @@ class _DashboardBody extends StatelessWidget {
         ),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              12,
+              AppSpacing.screen,
+              24,
+            ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                _GreetingCard(displayName: displayName, dateLabel: dateLabel)
+                    .animate()
+                    .fadeIn(duration: 400.ms)
+                    .slideY(begin: 0.08, end: 0),
                 if (offlineHint) ...[
+                  const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 14),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.warning.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadii.tileBr,
                       border: Border.all(
                         color: AppColors.warning.withValues(alpha: 0.35),
                       ),
@@ -125,80 +136,37 @@ class _DashboardBody extends StatelessWidget {
                     ),
                   ),
                 ],
-                Text(
-                  dateLabel,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.4,
-                      ),
-                )
-                    .animate()
-                    .fadeIn(duration: 400.ms)
-                    .slideY(begin: 0.1, end: 0),
-                const SizedBox(height: 6),
-                Text(
-                  'Welcome $displayName',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
-                )
-                    .animate()
-                    .fadeIn(delay: 80.ms, duration: 450.ms)
-                    .slideY(begin: 0.08, end: 0),
-                const SizedBox(height: 8),
-                Text(
-                  'Your daily hub — routine, fuel, and training in one place.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                )
-                    .animate()
-                    .fadeIn(delay: 140.ms, duration: 400.ms),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 // Gym Pass QR lives in Settings only — Hub shows join CTA banner.
                 const GymMembershipBanner()
                     .animate()
-                    .fadeIn(delay: 160.ms, duration: 450.ms),
-                const SizedBox(height: 24),
+                    .fadeIn(delay: 100.ms, duration: 450.ms),
+                const SizedBox(height: AppSpacing.section),
+                SectionHeader(
+                  title: 'Health Overview',
+                  actionLabel: 'See all',
+                  onAction: () => context.go('/reports'),
+                ),
+                StatusPillRow(status: status)
+                    .animate()
+                    .fadeIn(delay: 160.ms, duration: 450.ms)
+                    .slideY(begin: 0.05, end: 0),
+                const SizedBox(height: AppSpacing.section),
+                const SectionHeader(title: 'Daily Goals'),
                 DailyWinLossBanner(
                   isWin: status.isDailyWin,
                   calorieGoal: status.calorieGoal,
-                )
-                    .animate()
-                    .fadeIn(delay: 200.ms, duration: 500.ms)
-                    .scale(
-                      begin: const Offset(0.96, 0.96),
+                  progress: status.goalProgress,
+                ).animate().fadeIn(delay: 220.ms, duration: 500.ms).scale(
+                      begin: const Offset(0.97, 0.97),
                       end: const Offset(1, 1),
                       curve: Curves.easeOutBack,
                     ),
-                const SizedBox(height: 24),
-                Center(
-                  child: DailyGoalRing(progress: status.goalProgress)
-                      .animate()
-                      .fadeIn(delay: 280.ms, duration: 550.ms),
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    '${(status.goalProgress * 100).round()}% of daily goals',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                StatusPillRow(status: status),
-                const SizedBox(height: 20),
-                RemainingTasksCard(
-                  completed: status.tasksCompleted,
-                  total: status.tasksTotal,
-                  caloriesRemaining: status.caloriesRemaining,
-                  calorieGoal: status.calorieGoal,
-                ),
-                const SizedBox(height: 20),
-                _QuickActions(context: context),
-                const SizedBox(height: 32),
+                const SizedBox(height: AppSpacing.section),
+                const SectionHeader(title: 'Quick Actions'),
+                const _QuickActions()
+                    .animate()
+                    .fadeIn(delay: 280.ms, duration: 450.ms),
               ]),
             ),
           ),
@@ -208,89 +176,113 @@ class _DashboardBody extends StatelessWidget {
   }
 }
 
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.context});
+class _GreetingCard extends StatelessWidget {
+  const _GreetingCard({required this.displayName, required this.dateLabel});
 
-  final BuildContext context;
+  final String displayName;
+  final String dateLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick log',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionChip(
-                icon: Icons.restaurant_rounded,
-                label: 'Log meal',
-                onTap: () => context.go('/meals'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionChip(
-                icon: Icons.fitness_center_rounded,
-                label: 'Gym set',
-                onTap: () => context.go('/workouts'),
+    final trimmed = displayName.trim();
+    final initial = trimmed.isEmpty ? 'A' : trimmed[0].toUpperCase();
+
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      color: AppColors.surface.withValues(alpha: 0.85),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              borderRadius: AppRadii.tileBr,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.35),
+                  AppColors.surfaceHighest,
+                ],
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionChip(
-                icon: Icons.check_circle_outline_rounded,
-                label: 'Task',
-                onTap: () => context.go('/routine'),
+            alignment: Alignment.center,
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ],
-        ),
-      ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hey, $displayName!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dateLabel,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const SettingsGearButton(),
+        ],
+      ),
     );
   }
 }
 
-class _ActionChip extends StatelessWidget {
-  const _ActionChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
+class _QuickActions extends StatelessWidget {
+  const _QuickActions();
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceElevated,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-          child: Column(
-            children: [
-              Icon(icon, color: AppColors.primary, size: 22),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium,
-                textAlign: TextAlign.center,
-              ),
-            ],
+    return Row(
+      children: [
+        Expanded(
+          child: ActionTile(
+            icon: Icons.restaurant_rounded,
+            color: AppColors.accent,
+            label: 'Log meal',
+            onTap: () => context.go('/meals'),
           ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ActionTile(
+            icon: Icons.fitness_center_rounded,
+            color: AppColors.primary,
+            label: 'Gym set',
+            onTap: () => context.go('/workouts'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ActionTile(
+            icon: Icons.check_circle_outline_rounded,
+            color: AppColors.info,
+            label: 'Task',
+            onTap: () => context.go('/routine'),
+          ),
+        ),
+      ],
     );
   }
 }

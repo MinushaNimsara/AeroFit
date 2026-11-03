@@ -1,6 +1,7 @@
 import 'package:aerofit/core/theme/app_theme.dart';
 import 'package:aerofit/shared/widgets/qr_code_icon.dart';
 import 'package:aerofit/features/auth/providers/user_profile_providers.dart';
+import 'package:aerofit/shared/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,110 +11,131 @@ class GymMembershipBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(userProfileStreamProvider).valueOrNull;
-    if (profile == null || !profile.isTrainee) return const SizedBox.shrink();
+    final profileAsync = ref.watch(userProfileStreamProvider);
+    final profile = profileAsync.valueOrNull;
+    // Hide only for known non-trainees. Missing profile still shows join CTA.
+    if (profile != null && !profile.isTrainee) {
+      return const SizedBox.shrink();
+    }
 
     final calorieGoal = ref.watch(dailyCalorieGoalProvider);
+    final enrolled = profile?.isEnrolledInGym ?? false;
 
-    if (!profile.isEnrolledInGym) {
-      return Container(
+    if (!enrolled) {
+      return AppCard(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.group_off_rounded,
-                  color: AppColors.warning.withValues(alpha: 0.9),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
+            const IconChip(
+              icon: Icons.group_off_rounded,
+              color: AppColors.warning,
+              size: 40,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     'Not joined any gym',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: AppColors.warning,
                         ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Open Settings → My Gym Pass and show your QR code to your coach to unlock live gym routines and metrics.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.35,
+                  const SizedBox(height: 2),
+                  Text(
+                    'Show your Gym Pass QR to your coach to unlock live routines.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.35,
+                        ),
                   ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => context.push('/settings'),
-              icon: const QrCodeIcon(color: AppColors.primary, size: 20),
-              label: const Text('Open My Gym Pass'),
+            const SizedBox(width: 10),
+            Material(
+              color: AppColors.primary,
+              shape: const StadiumBorder(),
+              child: InkWell(
+                customBorder: const StadiumBorder(),
+                onTap: () => context.push('/settings'),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      QrCodeIcon(color: AppColors.onPrimary, size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'Gym Pass',
+                        style: TextStyle(
+                          color: AppColors.onPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withValues(alpha: 0.14),
-            AppColors.surfaceElevated,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      gradient: LinearGradient(
+        colors: [
+          AppColors.primary.withValues(alpha: 0.12),
+          AppColors.surface,
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.fitness_center_rounded, color: AppColors.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  profile.gymName ?? 'your gym',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          const IconChip(
+            icon: Icons.fitness_center_rounded,
+            color: AppColors.primary,
+            size: 40,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  profile?.gymName ?? 'your gym',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: AppColors.primary,
                       ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.win.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(99),
+                const SizedBox(height: 2),
+                Text(
+                  'Daily target: $calorieGoal kcal · Gym network active',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                 ),
-                child: const Text(
-                  'LIVE',
-                  style: TextStyle(
-                    color: AppColors.win,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Daily target: $calorieGoal kcal · Gym network active',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.win.withValues(alpha: 0.15),
+              borderRadius: AppRadii.pillBr,
+            ),
+            child: const Text(
+              'LIVE',
+              style: TextStyle(
+                color: AppColors.win,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
         ],
       ),
