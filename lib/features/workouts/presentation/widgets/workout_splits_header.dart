@@ -38,39 +38,16 @@ class _WorkoutSplitsHeaderState extends ConsumerState<WorkoutSplitsHeader> {
       ),
       data: (splits) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Splits',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
+              Text(
+                'Splits',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => showBuildMyRoutineDialog(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Build routine'),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    onPressed: () => _showCreateSplitDialog(context),
-                    tooltip: 'New split',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.add_rounded, size: 22),
-                  ),
-                ],
               ),
               if (splits.isEmpty)
                 _EmptySplitsHint(
@@ -78,7 +55,7 @@ class _WorkoutSplitsHeaderState extends ConsumerState<WorkoutSplitsHeader> {
                   onBuildRoutine: () => showBuildMyRoutineDialog(context),
                 )
               else ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -96,6 +73,21 @@ class _WorkoutSplitsHeaderState extends ConsumerState<WorkoutSplitsHeader> {
                             onDelete: () => _confirmDeleteSplit(context, split),
                           ),
                         ),
+                      Material(
+                        color: AppColors.surfaceElevated,
+                        shape: const CircleBorder(
+                          side: BorderSide(color: AppColors.border),
+                        ),
+                        child: InkWell(
+                          onTap: () => _showCreateSplitDialog(context),
+                          customBorder: const CircleBorder(),
+                          child: const SizedBox(
+                            width: 38,
+                            height: 38,
+                            child: Icon(Icons.add_rounded, size: 20),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

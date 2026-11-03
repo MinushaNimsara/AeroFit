@@ -11,6 +11,7 @@ import 'package:aerofit/features/live_workout/providers/live_workout_providers.d
 import 'package:aerofit/features/workouts/domain/gym_exercise.dart';
 import 'package:aerofit/features/workouts/domain/workout_split.dart';
 import 'package:aerofit/features/workouts/presentation/widgets/add_exercise_sheet.dart';
+import 'package:aerofit/features/workouts/presentation/widgets/build_my_routine_dialog.dart';
 import 'package:aerofit/features/workouts/presentation/widgets/workout_splits_header.dart';
 import 'package:aerofit/features/workouts/providers/exercises_providers.dart';
 import 'package:aerofit/features/workouts/providers/workout_splits_providers.dart';
@@ -39,7 +40,6 @@ class WorkoutsScreen extends ConsumerWidget {
     final splitsAsync = ref.watch(workoutSplitsStreamProvider);
     final exercisesAsync = ref.watch(splitExercisesStreamProvider);
     final selectedSplitId = ref.watch(effectiveSelectedSplitIdProvider);
-    final progress = ref.watch(activeSplitGymProgressProvider);
 
     // Trainees can always build their own splits/routines from the exercise
     // library and track workouts — gym enrollment only unlocks live
@@ -49,37 +49,19 @@ class WorkoutsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Gym Tracker'),
         actions: [
-          IconButton(
-            tooltip: 'Exercise Library',
-            icon: const Icon(Icons.menu_book_rounded),
+          IconCircleButton(
+            semanticLabel: 'Exercise library',
+            icon: Icons.menu_book_rounded,
+            size: 40,
             onPressed: () => context.push('/workouts/library'),
           ),
-          if (progress.$2 > 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: AppRadii.pillBr,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(
-                    '${progress.$1}/${progress.$2}',
-                    style: TextStyle(
-                      color: progress.$1 == progress.$2
-                          ? AppColors.win
-                          : AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          const SizedBox(width: 8),
+          IconCircleButton(
+            semanticLabel: 'Build routine',
+            icon: Icons.auto_awesome_rounded,
+            size: 40,
+            onPressed: () => showBuildMyRoutineDialog(context),
+          ),
           // Reserve space for AppShell's floating SettingsGearButton
           // (44px wide, positioned right: 12) so actions don't overlap it.
           const SizedBox(width: 56),
@@ -225,55 +207,53 @@ class _StartWorkoutBanner extends ConsumerWidget {
     final exerciseCount = exercises.length;
     final inSession = liveStatus?.isWorkingOut == true;
 
+    final accent = inSession ? AppColors.accent : AppColors.primary;
+    final subtitle = inSession
+        ? 'Current: ${liveStatus?.activeExerciseLabel ?? splitName}'
+        : exerciseCount > 0
+            ? '$exerciseCount exercises · $splitName'
+            : 'Add exercises to $splitName, then start';
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: AppCard(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            (inSession ? AppColors.accent : AppColors.primary)
-                .withValues(alpha: 0.14),
-            AppColors.surface,
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        color: accent.withValues(alpha: 0.08),
+        borderColor: accent.withValues(alpha: 0.35),
+        child: Row(
           children: [
-            Row(
-              children: [
-                IconChip(
-                  icon: inSession
-                      ? Icons.timer_rounded
-                      : Icons.local_fire_department_rounded,
-                  color: inSession ? AppColors.accent : AppColors.primary,
-                  size: 28,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
+            IconChip(
+              icon: inSession
+                  ? Icons.timer_rounded
+                  : Icons.local_fire_department_rounded,
+              color: accent,
+              size: 36,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     inSession ? 'Session in progress' : 'Ready to train?',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              inSession
-                  ? 'Current: ${liveStatus?.activeExerciseLabel ?? splitName}'
-                  : exerciseCount > 0
-                      ? '$exerciseCount exercises · $splitName'
-                      : 'Add exercises to $splitName, then start',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                   ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
+            const SizedBox(width: 8),
+            FilledButton(
               onPressed: () async {
                 if (inSession && exerciseCount > 0) {
                   await Navigator.of(context).push(
@@ -291,12 +271,15 @@ class _StartWorkoutBanner extends ConsumerWidget {
 
                 await showStartWorkoutSheet(context);
               },
-              icon: Icon(
-                inSession ? Icons.play_arrow_rounded : Icons.bolt_rounded,
+              style: FilledButton.styleFrom(
+                backgroundColor: accent,
+                foregroundColor: AppColors.onPrimary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              label: Text(
-                inSession ? 'Resume Session' : 'Start Workout Session',
-              ),
+              child: Text(inSession ? 'Resume' : 'Start'),
             ),
           ],
         ),

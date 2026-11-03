@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 10,
-  "latestVersionName": "1.0.9",
-  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.9/aerofit-1.0.9.apk",
+  "latestVersionCode": 12,
+  "latestVersionName": "1.0.11",
+  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.11/aerofit-1.0.11.apk",
   "forceUpdate": false,
   "minVersionCode": 4,
-  "releaseNotes": "New look: modern dark UI with lime accents, floating nav bar, redesigned hub, login and all screens"
+  "releaseNotes": "Gym Tracker header is less cramped: library and build-routine in the app bar, compact Resume/Start session card."
 }

@@ -1,7 +1,7 @@
 name: aerofit
 description: Personal lifestyle & fitness tracking — PWA-first Flutter app with Firebase.
 publish_to: "none"
-version: 1.0.9+10
+version: 1.0.11+12
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
