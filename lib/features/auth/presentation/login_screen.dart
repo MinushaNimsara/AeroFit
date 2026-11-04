@@ -143,7 +143,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           'Google Sign-In is not enabled in Firebase Console yet.',
         'user-disabled' => 'This account has been disabled.',
         'network-request-failed' =>
-          'Network error. Check your internet connection.',
+          e.message ??
+              "Can't reach Google on this network. Try mobile data, or another Wi‑Fi.",
         'missing-id-token' =>
           e.message ?? 'Google Sign-In misconfigured (missing ID token / SHA).',
         'auth-sdk-hang' => e.message ??
@@ -170,18 +171,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       debugPrint('Google Sign-In error: $e\n$stack');
       if (FirebaseAuth.instance.currentUser != null) return;
       final text = e.toString();
+      final lower = text.toLowerCase();
       if (text.contains('canceled') ||
           text.contains('cancelled') ||
-          text.contains('Aborte')) {
+          text.contains('Aborte') ||
+          lower.contains('popup_closed') ||
+          lower.contains('popup-closed')) {
         return;
       }
       if (mounted) {
+        final isNetwork = text.contains('TimeoutException') ||
+            lower.contains('socketexception') ||
+            lower.contains('clientexception') ||
+            lower.contains('failed host lookup') ||
+            lower.contains('network is unreachable') ||
+            lower.contains('connection reset') ||
+            lower.contains('connection refused') ||
+            lower.contains('err_connection') ||
+            lower.contains('err_name_not_resolved') ||
+            lower.contains('xmlhttprequest error') ||
+            lower.contains('network error');
+        final detail = text.length > 160 ? '${text.substring(0, 160)}…' : text;
         _showError(
-          text.toLowerCase().contains('initial state')
-              ? 'Google Sign-In failed. Hard-refresh the page and try again.'
-              : text.contains('TimeoutException')
-                  ? 'Google Sign-In timed out. Check your internet.'
-                  : 'Google Sign-In failed. Check internet / Firebase Google provider.',
+          lower.contains('origin_mismatch')
+              ? 'This site origin is not allowed for Google Sign-In. Add it in Google Cloud OAuth client.'
+              : lower.contains('initial state')
+                  ? 'Google Sign-In failed. Hard-refresh the page and try again.'
+                  : isNetwork
+                      ? "Can't reach Google on this network. Try mobile data, or another Wi‑Fi.\n$detail"
+                      : 'Google Sign-In failed.\n$detail',
         );
       }
     } finally {
@@ -410,7 +428,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'Build 2026.10.29-v20',
+                        'Build 1.0.15',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: AppColors.textMuted,

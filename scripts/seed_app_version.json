@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 13,
-  "latestVersionName": "1.0.12",
-  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.12/aerofit-1.0.12.apk",
+  "latestVersionCode": 16,
+  "latestVersionName": "1.0.15",
+  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.15/aerofit-1.0.15.apk",
   "forceUpdate": false,
   "minVersionCode": 4,
-  "releaseNotes": "Food photo analysis works again with current Gemini models."
+  "releaseNotes": "Fix Google Sign-In on web (Wi‑Fi / origin). Restyle Build My Routine as a bottom sheet."
 }

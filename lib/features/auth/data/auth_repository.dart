@@ -12,7 +12,7 @@ import 'package:aerofit/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -33,6 +33,11 @@ class AuthRepository {
   static const _authTimeout = Duration(seconds: 45);
   static const _restTimeout = Duration(seconds: 20);
   static const _signInTimeout = Duration(seconds: 30);
+  static const _gisTimeout = Duration(seconds: 28);
+  static const _networkRetryDelay = Duration(milliseconds: 700);
+
+  static const _googleNetworkMessage =
+      "Can't reach Google on this network. Try mobile data, or another Wi‑Fi.";
 
   User? get currentUser => _auth.currentUser;
 
@@ -147,28 +152,166 @@ class AuthRepository {
   /// Web OAuth client id — [GoogleSignIn.clientId] on web and
   /// [GoogleSignIn.serverClientId] on Android so Firebase gets an ID token.
   /// From google-services.json `oauth_client` type 3.
+  ///
+  /// Do **not** pass [serverClientId] on web — `google_sign_in_web` asserts
+  /// it must be null (debug builds crash before the picker opens).
   static const _googleWebClientId =
       '189303398586-nbum19rkc9lh4dr5qd5qeus906t0iis8.apps.googleusercontent.com';
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: const ['email', 'profile'],
     clientId: kIsWeb ? _googleWebClientId : null,
-    serverClientId: _googleWebClientId,
+    serverClientId: kIsWeb ? null : _googleWebClientId,
   );
 
-  /// Shared Google Sign-In for Android + Web (GIS idToken → credential / REST).
-  /// Avoids Firebase web `signInWithProvider` popup / sessionStorage failures.
-  Future<UserCredential> signInWithGoogle() async {
-    try {
-      final account = await _googleSignIn.signIn();
-      if (account == null) {
-        throw FirebaseAuthException(
-          code: 'aborted-by-user',
-          message: 'Google Sign-In was cancelled.',
-        );
-      }
+  static FirebaseAuthException _googleNetworkError([Object? cause]) {
+    if (cause != null) {
+      debugPrint('Google Sign-In network failure: $cause');
+    }
+    return FirebaseAuthException(
+      code: 'network-request-failed',
+      message: _googleNetworkMessage,
+    );
+  }
 
-      final googleAuth = await account.authentication;
+  /// True for DNS / socket / http client failures (web + Android). Avoids
+  /// importing `dart:io` (not available on web).
+  static bool _isTransientNetworkFailure(Object error) {
+    if (error is TimeoutException) return true;
+    if (error is http.ClientException) return true;
+    final text = error.toString().toLowerCase();
+    return text.contains('socketexception') ||
+        text.contains('clientexception') ||
+        text.contains('failed host lookup') ||
+        text.contains('network is unreachable') ||
+        text.contains('connection reset') ||
+        text.contains('connection refused') ||
+        text.contains('connection timed out') ||
+        text.contains('connection closed') ||
+        text.contains('network_error') ||
+        text.contains('network error') ||
+        text.contains('err_connection') ||
+        text.contains('err_name_not_resolved') ||
+        text.contains('xmlhttprequest error');
+  }
+
+  Future<T> _withNetworkRetry<T>(Future<T> Function() action) async {
+    bool shouldRetry(Object e) {
+      if (e is FirebaseAuthException) {
+        return e.code == 'network-request-failed';
+      }
+      return _isTransientNetworkFailure(e);
+    }
+
+    try {
+      return await action();
+    } catch (e) {
+      if (!shouldRetry(e)) rethrow;
+      await Future<void>.delayed(_networkRetryDelay);
+      try {
+        return await action();
+      } catch (retryError) {
+        if (retryError is FirebaseAuthException) rethrow;
+        if (_isTransientNetworkFailure(retryError)) {
+          throw _googleNetworkError(retryError);
+        }
+        rethrow;
+      }
+    }
+  }
+
+  Future<GoogleSignInAccount> _obtainGoogleAccount() async {
+    Future<GoogleSignInAccount> once() async {
+      try {
+        final account = await _googleSignIn.signIn().timeout(_gisTimeout);
+        if (account == null) {
+          throw FirebaseAuthException(
+            code: 'aborted-by-user',
+            message: 'Google Sign-In was cancelled.',
+          );
+        }
+        return account;
+      } on TimeoutException {
+        throw _googleNetworkError('GIS signIn timeout');
+      }
+    }
+
+    try {
+      return await once();
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'network-request-failed') rethrow;
+      await Future<void>.delayed(_networkRetryDelay);
+      return once();
+    } catch (e) {
+      if (!_isTransientNetworkFailure(e)) rethrow;
+      await Future<void>.delayed(_networkRetryDelay);
+      try {
+        return await once();
+      } catch (retryError) {
+        if (retryError is FirebaseAuthException) rethrow;
+        if (_isTransientNetworkFailure(retryError)) {
+          throw _googleNetworkError(retryError);
+        }
+        rethrow;
+      }
+    }
+  }
+
+  Future<GoogleSignInAuthentication> _googleAuthentication(
+    GoogleSignInAccount account,
+  ) async {
+    try {
+      return await account.authentication.timeout(_gisTimeout);
+    } on TimeoutException {
+      throw _googleNetworkError('GIS authentication timeout');
+    }
+  }
+
+  /// Web: Firebase GIS popup (idToken). Android: Play Services GIS + REST recover.
+  ///
+  /// Do not use `google_sign_in` `signIn()` on web — it only returns an access
+  /// token, then hits People API (no Firebase idToken). That is the
+  /// "loads after account pick, then network error" path.
+  Future<UserCredential> signInWithGoogle() async {
+    if (kIsWeb) {
+      return _signInWithGoogleWeb();
+    }
+    return _signInWithGoogleNative();
+  }
+
+  Future<UserCredential> _signInWithGoogleWeb() async {
+    try {
+      final provider = GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      provider.setCustomParameters(const {'prompt': 'select_account'});
+      final credential = await _auth
+          .signInWithPopup(provider)
+          .timeout(const Duration(seconds: 90));
+      final user = credential.user ?? _auth.currentUser;
+      if (user != null) await _ensureTraineeProfileExists(user);
+      return credential;
+    } on TimeoutException {
+      throw FirebaseAuthException(
+        code: 'network-request-failed',
+        message:
+            'Google Sign-In timed out. Close extra Google windows and try again.',
+      );
+    } on FirebaseAuthException {
+      rethrow;
+    } catch (e) {
+      if (_isTransientNetworkFailure(e)) {
+        throw _googleNetworkError(e);
+      }
+      rethrow;
+    }
+  }
+
+  Future<UserCredential> _signInWithGoogleNative() async {
+    try {
+      final account = await _obtainGoogleAccount();
+
+      final googleAuth = await _googleAuthentication(account);
       final idToken = googleAuth.idToken;
       if (idToken == null || idToken.isEmpty) {
         throw FirebaseAuthException(
@@ -212,7 +355,7 @@ class AuthRepository {
       }
 
       // Fresh Google tokens after REST (previous idToken may be spent).
-      final refreshed = await account.authentication;
+      final refreshed = await _googleAuthentication(account);
       final retryToken = refreshed.idToken ?? idToken;
       final retryOauth = GoogleAuthProvider.credential(
         accessToken: refreshed.accessToken ?? googleAuth.accessToken,
@@ -276,16 +419,20 @@ class AuthRepository {
               'Google Sign-In config error (code 10). Add SHA-1 + SHA-256 in Firebase, download fresh google-services.json, rebuild.',
         );
       }
-      if (details.contains('7') || details.contains('network')) {
-        throw FirebaseAuthException(
-          code: 'network-request-failed',
-          message: 'Google Sign-In network error. Check Wi‑Fi / mobile data.',
-        );
+      if (details.contains('7') ||
+          details.contains('network') ||
+          _isTransientNetworkFailure(e)) {
+        throw _googleNetworkError(e);
       }
       throw FirebaseAuthException(
         code: 'registration-failed',
         message: 'Google Sign-In failed ($code): ${e.message ?? e}',
       );
+    } catch (e) {
+      if (_isTransientNetworkFailure(e)) {
+        throw _googleNetworkError(e);
+      }
+      rethrow;
     }
   }
 
@@ -300,87 +447,101 @@ class AuthRepository {
     required String idToken,
     required String password,
   }) async {
-    final apiKey = _identityToolkitApiKey;
-    final url = Uri.parse(
-      'https://identitytoolkit.googleapis.com/v1/accounts:update?key=$apiKey',
-    );
-    final response = await http
-        .post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'idToken': idToken,
-            'password': password,
-            'returnSecureToken': true,
-          }),
-        )
-        .timeout(_restTimeout);
+    await _withNetworkRetry(() async {
+      final apiKey = _identityToolkitApiKey;
+      final url = Uri.parse(
+        'https://identitytoolkit.googleapis.com/v1/accounts:update?key=$apiKey',
+      );
+      late final http.Response response;
+      try {
+        response = await http
+            .post(
+              url,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'idToken': idToken,
+                'password': password,
+                'returnSecureToken': true,
+              }),
+            )
+            .timeout(_restTimeout);
+      } on TimeoutException {
+        throw _googleNetworkError('accounts:update timeout');
+      }
 
-    Map<String, dynamic> body;
-    try {
-      body = jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (_) {
+      Map<String, dynamic> body;
+      try {
+        body = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {
+        throw FirebaseAuthException(
+          code: 'auth-sdk-hang',
+          message: 'Could not finish Google session recover (bad server reply).',
+        );
+      }
+      if (response.statusCode == 200) return;
+      final rawMsg =
+          (body['error'] as Map<String, dynamic>?)?['message'] as String? ??
+              'UPDATE_FAILED';
       throw FirebaseAuthException(
         code: 'auth-sdk-hang',
-        message: 'Could not finish Google session recover (bad server reply).',
+        message: 'Google session recover failed: $rawMsg',
       );
-    }
-    if (response.statusCode == 200) return;
-    final rawMsg =
-        (body['error'] as Map<String, dynamic>?)?['message'] as String? ??
-            'UPDATE_FAILED';
-    throw FirebaseAuthException(
-      code: 'auth-sdk-hang',
-      message: 'Google session recover failed: $rawMsg',
-    );
+    });
   }
 
   Future<Map<String, dynamic>> _signInWithGoogleIdTokenViaRest(
     String idToken,
   ) async {
-    final apiKey = _identityToolkitApiKey;
-    final url = Uri.parse(
-      'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=$apiKey',
-    );
-    final response = await http
-        .post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'postBody':
-                'id_token=${Uri.encodeQueryComponent(idToken)}&providerId=google.com',
-            'requestUri': _restRequestUri,
-            'returnIdpCredential': true,
-            'returnSecureToken': true,
-          }),
-        )
-        .timeout(_restTimeout);
-
-    Map<String, dynamic> body;
-    try {
-      body = jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (_) {
-      throw FirebaseAuthException(
-        code: 'network-request-failed',
-        message: 'Could not reach Firebase Auth for Google Sign-In.',
+    return _withNetworkRetry(() async {
+      final apiKey = _identityToolkitApiKey;
+      final url = Uri.parse(
+        'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=$apiKey',
       );
-    }
+      late final http.Response response;
+      try {
+        response = await http
+            .post(
+              url,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'postBody':
+                    'id_token=${Uri.encodeQueryComponent(idToken)}&providerId=google.com',
+                'requestUri': _restRequestUri,
+                'returnIdpCredential': true,
+                'returnSecureToken': true,
+              }),
+            )
+            .timeout(_restTimeout);
+      } on TimeoutException {
+        throw _googleNetworkError('signInWithIdp timeout');
+      }
 
-    if (response.statusCode == 200) return body;
+      Map<String, dynamic> body;
+      try {
+        body = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {
+        throw FirebaseAuthException(
+          code: 'network-request-failed',
+          message: _googleNetworkMessage,
+        );
+      }
 
-    final rawMsg =
-        (body['error'] as Map<String, dynamic>?)?['message'] as String? ??
-            'GOOGLE_SIGNIN_FAILED';
-    if (rawMsg.contains('OPERATION_NOT_ALLOWED')) {
+      if (response.statusCode == 200) return body;
+
+      final rawMsg =
+          (body['error'] as Map<String, dynamic>?)?['message'] as String? ??
+              'GOOGLE_SIGNIN_FAILED';
+      if (rawMsg.contains('OPERATION_NOT_ALLOWED')) {
+        throw FirebaseAuthException(
+          code: 'operation-not-allowed',
+          message: 'Google Sign-In is not enabled in Firebase Console.',
+        );
+      }
       throw FirebaseAuthException(
-        code: 'operation-not-allowed',
-        message: 'Google Sign-In is not enabled in Firebase Console.',
+        code: 'registration-failed',
+        message: 'Google Sign-In rejected by Firebase: $rawMsg',
       );
-    }
-    throw FirebaseAuthException(
-      code: 'registration-failed',
-      message: 'Google Sign-In rejected by Firebase: $rawMsg',
-    );
+    });
   }
 
   Future<void> _syncIdentityBestEffort(User? user) async {
