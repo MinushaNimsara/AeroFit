@@ -52,7 +52,9 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
     final picker = ImagePicker();
     final image = await picker.pickImage(
       source: source,
-      imageQuality: 85,
+      maxWidth: 1280,
+      maxHeight: 1280,
+      imageQuality: 75,
     );
     if (image == null || !mounted) return;
 
@@ -126,6 +128,9 @@ class _LogMealSheetState extends ConsumerState<LogMealSheet> {
     }
     if (text.contains('404') || text.contains('NOT_FOUND')) {
       return 'Meal analysis model unavailable. Try again later, or use Manual Entry.';
+    }
+    if (text.contains('TimeoutException') || text.contains('timed out')) {
+      return 'Meal analysis timed out. Try a clearer, closer photo.';
     }
     return 'Could not analyze that meal photo. Try again or use Manual Entry.';
   }

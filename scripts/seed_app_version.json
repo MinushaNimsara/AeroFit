@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 12,
-  "latestVersionName": "1.0.11",
-  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.11/aerofit-1.0.11.apk",
+  "latestVersionCode": 13,
+  "latestVersionName": "1.0.12",
+  "apkUrl": "https://github.com/MinushaNimsara/AeroFit/releases/download/v1.0.12/aerofit-1.0.12.apk",
   "forceUpdate": false,
   "minVersionCode": 4,
-  "releaseNotes": "Gym Tracker header is less cramped: library and build-routine in the app bar, compact Resume/Start session card."
+  "releaseNotes": "Food photo analysis works again with current Gemini models."
 }

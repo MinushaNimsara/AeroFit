@@ -173,9 +173,9 @@ RULES:
     final fallbackModels = <String>[
       primaryModel,
       'gemini-flash-latest',
-      'gemini-2.0-flash-lite',
-      'gemini-2.0-flash',
+      'gemini-3.5-flash',
       'gemini-2.5-flash',
+      'gemini-flash-lite-latest',
     ];
     final seen = <String>{};
     final attempts =
@@ -209,10 +209,11 @@ RULES:
         return response;
       }
 
-      if (response.statusCode == 400 && attempt.useStructuredJson) {
+      if (response.statusCode == 400) {
         final body = response.body;
-        if (body.contains('responseMimeType') ||
-            body.contains('response_mime_type')) {
+        if (attempt.useStructuredJson &&
+            (body.contains('responseMimeType') ||
+                body.contains('response_mime_type'))) {
           response = await _generateContent(
             apiVersion: attempt.apiVersion,
             modelId: attempt.modelId,
@@ -225,10 +226,24 @@ RULES:
             return response;
           }
         }
+        if (body.toLowerCase().contains('thinking')) {
+          response = await _generateContent(
+            apiVersion: attempt.apiVersion,
+            modelId: attempt.modelId,
+            base64Image: base64Image,
+            mimeType: mimeType,
+            useStructuredJson: false,
+            disableThinking: false,
+          );
+          lastResponse = response;
+          if (response.statusCode == 200) {
+            return response;
+          }
+        }
       }
 
       // Try the next model when this one is missing or retired for the key.
-      if (response.statusCode == 404) {
+      if (_shouldTryNextModel(response.statusCode, response.body)) {
         continue;
       }
       return response;
@@ -244,6 +259,7 @@ RULES:
     required String base64Image,
     required String mimeType,
     required bool useStructuredJson,
+    bool disableThinking = true,
   }) {
     final uri = _buildGenerateContentUri(
       apiVersion: apiVersion,
@@ -251,30 +267,40 @@ RULES:
     );
 
     final generationConfig = <String, dynamic>{'temperature': 0.15};
+    if (disableThinking) {
+      // Gemini 3.x / 2.5 default to thinking; thoughts come back as the first
+      // part and meal JSON parsing used to swallow them as the whole reply.
+      generationConfig['thinkingConfig'] = {'thinkingBudget': 0};
+    }
     if (useStructuredJson) {
       generationConfig['responseMimeType'] = 'application/json';
     }
 
-    return _client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'contents': [
-          {
-            'parts': [
-              {'text': _prompt},
+    return _client
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': Env.geminiApiKey,
+          },
+          body: jsonEncode({
+            'contents': [
               {
-                'inline_data': {
-                  'mime_type': mimeType,
-                  'data': base64Image,
-                },
+                'parts': [
+                  {'text': _prompt},
+                  {
+                    'inline_data': {
+                      'mime_type': mimeType,
+                      'data': base64Image,
+                    },
+                  },
+                ],
               },
             ],
-          },
-        ],
-        'generationConfig': generationConfig,
-      }),
-    );
+            'generationConfig': generationConfig,
+          }),
+        )
+        .timeout(const Duration(seconds: 60));
   }
 
   Uri _buildGenerateContentUri({
@@ -284,8 +310,15 @@ RULES:
     return Uri.https(
       'generativelanguage.googleapis.com',
       '/$apiVersion/models/$modelId:generateContent',
-      {'key': Env.geminiApiKey},
     );
+  }
+
+  bool _shouldTryNextModel(int statusCode, String body) {
+    if (statusCode == 404) return true;
+    final lower = body.toLowerCase();
+    return lower.contains('no longer available') ||
+        lower.contains('is not found') ||
+        lower.contains('not supported');
   }
 
   String _normalizeModelId(String raw) {
@@ -307,7 +340,8 @@ RULES:
     return normalized.contains('1.5') ||
         normalized.contains('2.0') ||
         normalized.contains('2.5') ||
-        normalized.contains('3.');
+        normalized.contains('3.') ||
+        normalized.contains('flash-latest');
   }
 
   Map<String, dynamic> _decodeMealJson(String rawText) {
@@ -545,17 +579,35 @@ RULES:
     }
 
     final content = candidates.first as Map<String, dynamic>;
-    final parts = content['content']?['parts'] as List<dynamic>?;
+    final inner = content['content'] is Map
+        ? Map<String, dynamic>.from(content['content'] as Map)
+        : content;
+    final parts = inner['parts'] as List<dynamic>?;
     if (parts == null || parts.isEmpty) {
       throw Exception('AI returned empty content');
     }
 
-    final text = parts.first['text'];
-    if (text is! String || text.trim().isEmpty) {
-      throw Exception('AI returned no text response');
+    final answer = StringBuffer();
+    final thoughts = StringBuffer();
+    for (final part in parts) {
+      if (part is! Map) continue;
+      final map = Map<String, dynamic>.from(part);
+      final text = map['text'];
+      if (text is! String || text.trim().isEmpty) continue;
+      if (map['thought'] == true) {
+        thoughts.write(text);
+      } else {
+        answer.write(text);
+      }
     }
 
-    return text;
+    final resolved = answer.toString().trim().isNotEmpty
+        ? answer.toString()
+        : thoughts.toString();
+    if (resolved.trim().isEmpty) {
+      throw Exception('AI returned no text response');
+    }
+    return resolved;
   }
 
   String _cleanJsonText(String raw) {
